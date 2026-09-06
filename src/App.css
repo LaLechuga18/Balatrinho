@@ -1,0 +1,104 @@
+/* Animación para cuando la carta entra a la mesa */
+@keyframes aparecerCarta {
+  0% { 
+    opacity: 0; 
+    transform: translateY(-40px) scale(0.8); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+/* ESTRUCTURA PRINCIPAL */
+.pantalla-juego {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 15px;
+  background-color: #0b0b1a; /* Fondo oscuro azulado */
+  color: white;
+  box-sizing: border-box;
+}
+
+/* BARRA SUPERIOR (Jugadores) */
+.barra-superior {
+  display: flex;
+  justify-content: space-around;
+  background-color: #11112b;
+  border: 1px solid #1a5b8f;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+/* ZONA CENTRAL: 3 Columnas */
+.zona-central {
+  display: grid;
+  /* Columna izquierda (Comodines) de 280px, centro flexible, derecha (Puntos) de 280px */
+  grid-template-columns: 280px 1fr 280px; 
+  gap: 15px;
+  flex-grow: 1;
+}
+
+/* PANELES COMUNES */
+.panel {
+  background-color: #0a1128;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bordes Neón según tu imagen */
+.panel-comodines { border: 2px solid #b721ff; box-shadow: 0 0 10px rgba(183, 33, 255, 0.3); }
+.panel-mano { border: 2px solid #0055ff; box-shadow: 0 0 10px rgba(0, 85, 255, 0.3); }
+.panel-puntuacion { border: 2px solid #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
+
+/* REGISTRO DE PARTIDA (Abajo) */
+.registro-partida {
+  background-color: #1a1025;
+  border: 2px solid #6b21a8;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 15px;
+  height: 100px;
+}
+
+/* CAJA DE PUNTOS TOTAL (como el "300" rojo de tu imagen) */
+.caja-total-puntos {
+  background-color: #3b0a0a;
+  border: 2px dotted #ff4d4d;
+  border-radius: 8px;
+  text-align: center;
+  padding: 15px;
+  margin-top: 15px;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffaa00;
+  text-shadow: 0 0 10px red;
+}
+
+.carta-base {
+  width: 60px; /* Ajusta el tamaño a tu gusto */
+  height: 85px; /* Ajusta el tamaño a tu gusto */
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  
+  /* Para que tu pixel art siga viéndose súper nítido */
+  image-rendering: pixelated; 
+  
+  transform: scale(1.5);
+  margin: 15px;
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s, filter 0.2s;
+}
+
+.carta-base:hover:not(.carta-seleccionada) {
+  transform: scale(1.6) translateY(-5px);
+}
+
+.carta-seleccionada {
+  transform: scale(1.6) translateY(-15px);
+  filter: drop-shadow(0px 0px 4px cyan); 
+}
