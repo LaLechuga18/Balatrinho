@@ -1,14 +1,17 @@
 import type { CardData } from '../types/gameType';
 import { TIPOS_DE_MANO, type HandTypeInfo } from '../utils/handRules';
+import { acumularEfectos, type Comodin } from './jokers';
 
 export interface ResultadoMano {
   nombreMano: string;
   fichasBase: number;
   fichasCartas: number;
+  fichasComodines: number; // fichas aportadas por los comodines equipados
   fichasTotales: number;
-  mult: number;
+  mult: number;            // multiplicador final (mano + comodines)
+  multComodines: number;   // cuánto del multiplicador viene de los comodines
   puntajeFinal: number;
-  cartasPuntuables: CardData[]; // útil luego para resaltar/animar qué cartas anotaron
+  cartasPuntuables: CardData[];
 }
 
 export function obtenerFichasDeCarta(valor: number): number {
@@ -21,14 +24,20 @@ const RESULTADO_VACIO: ResultadoMano = {
   nombreMano: 'Ninguna',
   fichasBase: 0,
   fichasCartas: 0,
+  fichasComodines: 0,
   fichasTotales: 0,
   mult: 0,
+  multComodines: 0,
   puntajeFinal: 0,
   cartasPuntuables: [],
 };
 
-export function evaluarMano(cartasSeleccionadas: CardData[]): ResultadoMano {
+export function evaluarMano(
+  cartasSeleccionadas: CardData[],
+  comodinesEquipados: Comodin[] = []
+): ResultadoMano {
   if (cartasSeleccionadas.length === 0) return RESULTADO_VACIO;
+
 
   // 1. Agrupar por valor y por palo
   const cartasPorValor: Record<number, CardData[]> = {};
@@ -112,19 +121,26 @@ export function evaluarMano(cartasSeleccionadas: CardData[]): ResultadoMano {
       cartasPuntuables = cartasOrdenadas;
   }
 
-  const fichasCartas = cartasPuntuables.reduce(
+    const fichasCartas = cartasPuntuables.reduce(
     (suma, c) => suma + obtenerFichasDeCarta(c.valor),
     0
   );
-  const fichasTotales = info.fichasBase + fichasCartas;
-  const puntajeFinal = fichasTotales * info.multBase;
+
+  // Efectos de los comodines equipados, calculados sobre las cartas que puntúan
+  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables);
+
+  const fichasTotales = info.fichasBase + fichasCartas + efectoComodines.fichasExtra;
+  const multFinal = info.multBase + efectoComodines.multExtra;
+  const puntajeFinal = fichasTotales * multFinal;
 
   return {
     nombreMano: info.nombre,
     fichasBase: info.fichasBase,
     fichasCartas,
+    fichasComodines: efectoComodines.fichasExtra,
     fichasTotales,
-    mult: info.multBase,
+    mult: multFinal,
+    multComodines: efectoComodines.multExtra,
     puntajeFinal,
     cartasPuntuables,
   };
