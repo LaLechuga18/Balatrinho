@@ -15,4 +15,8 @@ export const TIPOS_DE_MANO: Record<string, HandTypeInfo> = {
   FULL_HOUSE: { nombre: 'Full House', fichasBase: 40, multBase: 4 },
   POKER: { nombre: 'Póker', fichasBase: 60, multBase: 7 },
   ESCALERA_COLOR: { nombre: 'Escalera de Color', fichasBase: 100, multBase: 8 },
+  // Manos secretas de Balatro (requieren 5+ cartas repetidas, ej. con cartas potenciadas)
+  REPOKER: { nombre: 'Repóker', fichasBase: 120, multBase: 12 },
+  FULL_DE_COLOR: { nombre: 'Full de Color', fichasBase: 140, multBase: 14 },
+  POKER_DE_COLOR: { nombre: 'Póker de Color', fichasBase: 160, multBase: 16 },
 };
