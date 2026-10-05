@@ -326,7 +326,7 @@ function App() {
           </div>
 
           <div className="caja-total-puntos">
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: '5px' }}>Total Proyectado:</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: '5px' }}>Score aproximado:</div>
             {resultadoScoring.puntajeFinal}
           </div>
 
