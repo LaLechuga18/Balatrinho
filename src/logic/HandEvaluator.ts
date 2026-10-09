@@ -20,23 +20,25 @@ export function obtenerFichasDeCarta(valor: number): number {
   return valor;
 }
 
-const RESULTADO_VACIO: ResultadoMano = {
-  nombreMano: 'Ninguna',
-  fichasBase: 0,
-  fichasCartas: 0,
-  fichasComodines: 0,
-  fichasTotales: 0,
-  mult: 0,
-  multComodines: 0,
-  puntajeFinal: 0,
-  cartasPuntuables: [],
-};
+function resultadoVacio(): ResultadoMano {
+  return {
+    nombreMano: 'Ninguna',
+    fichasBase: 0,
+    fichasCartas: 0,
+    fichasComodines: 0,
+    fichasTotales: 0,
+    mult: 0,
+    multComodines: 0,
+    puntajeFinal: 0,
+    cartasPuntuables: [],
+  };
+}
 
 export function evaluarMano(
   cartasSeleccionadas: CardData[],
   comodinesEquipados: Comodin[] = []
 ): ResultadoMano {
-  if (cartasSeleccionadas.length === 0) return RESULTADO_VACIO;
+  if (cartasSeleccionadas.length === 0) return resultadoVacio();
 
 
   // 1. Agrupar por valor y por palo
