@@ -14,6 +14,8 @@ export const MAX_COMODINES = 3;
 export const COMODINES_EN_OFERTA = 3;
 export const VIDAS_INICIALES = 3; // Las vidas se miden en medios corazones (3 = 3 corazones = 6 hp)
 export const TOTAL_JUGADORES = 1; // TODO multijugador: recibir esto como parámetro del servidor
+export const COSTO_REROLL = 3;
+export const PORCENTAJE_VENTA = 0.4; // 40% del costo original
 
 // Monedas base por posición al terminar la ronda (índice 0 = 1er lugar)
 const MONEDAS_POR_POSICION = [5, 4, 3, 1] as const;
@@ -53,6 +55,7 @@ export function useGameState() {
   const [comodinesEquipados, setComodinesEquipados] = useState<Comodin[]>([]);
   const [mostrarTienda, setMostrarTienda] = useState<boolean>(false);
   const [ofertaTienda, setOfertaTienda] = useState<Comodin[]>([]);
+  const semillaTiendaRef = useRef<number>(0);
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [mostrarFinPartida, setMostrarFinPartida] = useState<boolean>(false);
 
@@ -178,12 +181,23 @@ export function useGameState() {
     );
 
     if (siguienteRonda <= MAX_RONDAS) {
-      setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA));
+      semillaTiendaRef.current = 0;
+      setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, 0));
       setMostrarTienda(true);
     } else {
       agregarHistorial(`¡Partida terminada! Puntaje final: ${puntajeDeRonda}`, rondaActual);
       setMostrarFinPartida(true);
     }
+  };
+
+  /** Vende un comodín equipado y devuelve el 40% de su costo en monedas. */
+  const venderComodin = (comodinId: string) => {
+    const comodin = comodinesEquipados.find(c => c.id === comodinId);
+    if (!comodin) return;
+    const reembolso = Math.floor(comodin.costo * PORCENTAJE_VENTA);
+    setMonedas(prev => prev + reembolso);
+    setComodinesEquipados(prev => prev.filter(c => c.id !== comodinId));
+    agregarHistorial(`Vendiste "${comodin.nombre}" por 🪙 ${reembolso}.`, rondaActual);
   };
 
   const comprarComodin = (comodin: Comodin) => {
@@ -204,6 +218,14 @@ export function useGameState() {
     setPuntajeRonda(0);
   };
 
+  /** Re-roll: gasta COSTO_REROLL monedas y muestra otros comodines en la tienda. */
+  const rerollTienda = () => {
+    if (monedas < COSTO_REROLL) return;
+    semillaTiendaRef.current += 1;
+    setMonedas(prev => prev - COSTO_REROLL);
+    setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, semillaTiendaRef.current));
+  };
+
   /** Reinicia toda la partida desde cero (nueva ronda 1, sin comodines ni monedas). */
   const reiniciarJuego = () => {
     const ronda = crearRonda();
@@ -221,6 +243,7 @@ export function useGameState() {
     setComodinesEquipados([]);
     setMostrarTienda(false);
     setOfertaTienda([]);
+    semillaTiendaRef.current = 0;
     setHistorial([]);
     setMostrarFinPartida(false);
   };
@@ -251,7 +274,9 @@ export function useGameState() {
     descartarCartas,
     confirmarMano,
     comprarComodin,
+    venderComodin,
     continuarTrasTienda,
+    rerollTienda,
     reiniciarJuego,
   };
 }

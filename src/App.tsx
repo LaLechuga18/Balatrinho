@@ -14,6 +14,8 @@ import {
   MAX_COMODINES,
   COMODINES_EN_OFERTA,
   VIDAS_INICIALES,
+  COSTO_REROLL,
+  PORCENTAJE_VENTA,
 } from './hooks/useGameState';
 import './App.css';
 
@@ -72,11 +74,23 @@ function App() {
     descartarCartas,
     confirmarMano,
     comprarComodin,
+    venderComodin,
     continuarTrasTienda,
+    rerollTienda,
     reiniciarJuego,
   } = useGameState();
 
   const [ordenMano, setOrdenMano] = useState<OrdenMano>('original');
+  // ID del comodín seleccionado para vender (null = ninguno seleccionado)
+  const [comodinSeleccionadoId, setComodinSeleccionadoId] = useState<string | null>(null);
+
+  const toggleSeleccionVenta = (id: string) =>
+    setComodinSeleccionadoId(prev => prev === id ? null : id);
+
+  const confirmarVenta = (id: string) => {
+    venderComodin(id);
+    setComodinSeleccionadoId(null);
+  };
 
   // Orden visual de la mano — no muta el estado del hook, solo reordena para el render
   const manoOrdenada = useMemo(() => {
@@ -136,7 +150,9 @@ function App() {
           monedas={monedas}
           comodinesEquipados={comodinesEquipados}
           maxComodines={MAX_COMODINES}
+          costoReroll={COSTO_REROLL}
           onComprar={comprarComodin}
+          onReroll={rerollTienda}
           onContinuar={continuarTrasTienda}
         />
       )}
@@ -166,13 +182,27 @@ function App() {
           {Array.from({ length: MAX_COMODINES }).map((_, index) => {
             const comodin = comodinesEquipados[index];
             const esUltimo = index === MAX_COMODINES - 1;
+            const seleccionado = comodin?.id === comodinSeleccionadoId;
+            const valorVenta = comodin ? Math.floor(comodin.costo * PORCENTAJE_VENTA) : 0;
 
             return comodin ? (
-              <div key={comodin.id} className={`slot-comodin slot-comodin-lleno${esUltimo ? ' sin-margen' : ''}`}>
+              <div
+                key={comodin.id}
+                className={`slot-comodin slot-comodin-lleno${esUltimo ? ' sin-margen' : ''}${seleccionado ? ' slot-comodin-seleccionado' : ''}`}
+                onClick={() => toggleSeleccionVenta(comodin.id)}
+              >
                 <ComodinImagen comodin={comodin} />
-                <div>
+                <div className="comodin-info">
                   <div className="comodin-nombre">{comodin.nombre}</div>
                   <div className="comodin-descripcion">{comodin.descripcion}</div>
+                  {seleccionado && (
+                    <button
+                      className="btn-vender"
+                      onClick={(e) => { e.stopPropagation(); confirmarVenta(comodin.id); }}
+                    >
+                      Vender  🪙 {valorVenta}
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
