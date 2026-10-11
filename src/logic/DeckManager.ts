@@ -38,4 +38,18 @@ export class DeckManager {
   public cartasRestantes(): number {
     return this.deck.length;
   }
+
+  // Devuelve cuántas cartas quedan en el mazo agrupadas por palo
+  public conteoMazo(): Record<Palo, number> {
+    const conteo: Record<Palo, number> = {
+      Corazones: 0,
+      Diamantes: 0,
+      Treboles: 0,
+      Espadas: 0,
+    };
+    for (const carta of this.deck) {
+      conteo[carta.palo]++;
+    }
+    return conteo;
+  }
 }

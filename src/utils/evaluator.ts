@@ -68,23 +68,19 @@ export function evaluarMano(cartasSeleccionadas: CardData[]) {
   // ==========================================
   // FILTRAR CARTAS PUNTUABLES
   // ==========================================
-  let cartasPuntuables: CardData[] = [];
   const cartasOrdenadas = [...cartasSeleccionadas].sort((a, b) => b.valor - a.valor);
 
+  let cartasPuntuables: CardData[];
   if (infoMano.nombre === 'Carta Alta') {
-    cartasPuntuables = [cartasOrdenadas[0]]; 
-  } 
-  else if (infoMano.nombre === 'Pareja' || infoMano.nombre === 'Doble Pareja') {
+    cartasPuntuables = [cartasOrdenadas[0]];
+  } else if (infoMano.nombre === 'Pareja' || infoMano.nombre === 'Doble Pareja') {
     cartasPuntuables = cartasOrdenadas.filter(c => conteoValores[c.valor] === 2);
-  } 
-  else if (infoMano.nombre === 'Trío') {
+  } else if (infoMano.nombre === 'Trío') {
     cartasPuntuables = cartasOrdenadas.filter(c => conteoValores[c.valor] === 3);
-  } 
-  else if (infoMano.nombre === 'Póker') {
+  } else if (infoMano.nombre === 'Póker') {
     cartasPuntuables = cartasOrdenadas.filter(c => conteoValores[c.valor] === 4);
-  } 
-  else {
-    // Si es Color, Escalera, Escalera de Color o Full House, puntúan todas las 5 cartas
+  } else {
+    // Color, Escalera, Escalera de Color y Full House: puntúan todas las 5 cartas
     cartasPuntuables = cartasOrdenadas;
   }
 

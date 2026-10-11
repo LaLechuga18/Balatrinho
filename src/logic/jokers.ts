@@ -41,7 +41,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     id: 'rey',
     nombre: 'El Rey',
     descripcion: 'Cada Rey que puntúe otorga +50 fichas.',
-    costo: 8,
+    costo: 5,
     imagen: '/jokers/rey.png',
     calcularEfecto: (cartasPuntuables) => {
       const reyes = cartasPuntuables.filter((c) => c.valor === 13).length;
@@ -49,12 +49,10 @@ export const CATALOGO_COMODINES: Comodin[] = [
     },
   },
   {
-    // El documento lo llama "Maestro de Picas"; aquí usamos "Espadas" para ser
-    // consistentes con el tipo Palo del código (mismo palo ♠).
     id: 'maestro-espadas',
     nombre: 'Maestro de Espadas',
     descripcion: 'Cada carta de Espadas que puntúe otorga +20 fichas.',
-    costo: 8,
+    costo: 5,
     imagen: '/jokers/maestro-espadas.png',
     calcularEfecto: (cartasPuntuables) => {
       const espadas = cartasPuntuables.filter((c) => c.palo === 'Espadas').length;
@@ -65,7 +63,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     id: 'comodin',
     nombre: 'Comodín',
     descripcion: 'Comodín generalista: +1 al multiplicador de cualquier mano.',
-    costo: 10,
+    costo: 5,
     imagen: '/jokers/comodin.png',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 1 }),
   },

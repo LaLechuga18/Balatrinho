@@ -7,3 +7,9 @@ export interface CardData {
   palo: Palo;
   seleccionada?: boolean; // El signo de interrogacion significa que es opcional (para el descarte)
 }
+
+/** Entrada del historial de partida */
+export interface EntradaHistorial {
+  ronda: number;
+  descripcion: string;
+}

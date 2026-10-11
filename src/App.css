@@ -1,71 +1,270 @@
 /* Animación para cuando la carta entra a la mesa */
 @keyframes aparecerCarta {
-  0% { 
-    opacity: 0; 
-    transform: translateY(-40px) scale(0.8); 
+  0% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.8);
   }
-  100% { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-/* ESTRUCTURA PRINCIPAL */
+/* ── ESTRUCTURA PRINCIPAL ──────────────────────────────────────────────────── */
 .pantalla-juego {
   display: flex;
   flex-direction: column;
   height: 100vh;
   padding: 15px;
-  background-color: #0b0b1a; /* Fondo oscuro azulado */
+  background-color: #0b0b1a;
   color: white;
   box-sizing: border-box;
+  font-family: sans-serif;
 }
 
-/* BARRA SUPERIOR (Jugadores) */
+/* ── BARRA SUPERIOR ────────────────────────────────────────────────────────── */
 .barra-superior {
   display: flex;
   justify-content: space-around;
+  align-items: center;
   background-color: #11112b;
   border: 1px solid #1a5b8f;
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 15px;
+  gap: 10px;
 }
 
-/* ZONA CENTRAL: 3 Columnas */
+.jugador-activo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+.jugador-nombre {
+  color: #00ccff;
+}
+
+.jugador-vidas {
+  display: flex;
+  gap: 2px;
+}
+
+.vida-llena {
+  color: #ff4466;
+  font-size: 1.1rem;
+}
+
+.vida-media {
+  color: #ff8855;
+  font-size: 1.1rem;
+}
+
+.vida-vacia {
+  color: #444;
+  font-size: 1.1rem;
+}
+
+.jugador-monedas {
+  color: #ffd700;
+}
+
+.jugador-mockup {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+/* ── ZONA CENTRAL ──────────────────────────────────────────────────────────── */
 .zona-central {
   display: grid;
-  /* Columna izquierda (Comodines) de 280px, centro flexible, derecha (Puntos) de 280px */
-  grid-template-columns: 280px 1fr 280px; 
+  grid-template-columns: 280px 1fr 280px;
   gap: 15px;
   flex-grow: 1;
+  min-height: 0;
 }
 
-/* PANELES COMUNES */
+/* ── PANELES ───────────────────────────────────────────────────────────────── */
 .panel {
   background-color: #0a1128;
   border-radius: 12px;
   padding: 15px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-/* Bordes Neón según tu imagen */
 .panel-comodines { border: 2px solid #b721ff; box-shadow: 0 0 10px rgba(183, 33, 255, 0.3); }
-.panel-mano { border: 2px solid #0055ff; box-shadow: 0 0 10px rgba(0, 85, 255, 0.3); }
-.panel-puntuacion { border: 2px solid #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
+.panel-mano      { border: 2px solid #0055ff; box-shadow: 0 0 10px rgba(0, 85, 255, 0.3); }
+.panel-puntuacion{ border: 2px solid #00ffcc; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
 
-/* REGISTRO DE PARTIDA (Abajo) */
-.registro-partida {
-  background-color: #1a1025;
-  border: 2px solid #6b21a8;
+.panel-titulo {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.titulo-comodines  { color: #ff77ff; }
+.titulo-mano       { color: #00ccff; }
+.titulo-puntuacion { color: #00ffcc; }
+
+/* ── SLOTS DE COMODINES ────────────────────────────────────────────────────── */
+.slot-comodin {
   border-radius: 8px;
-  padding: 10px;
-  margin-top: 15px;
-  height: 100px;
+  margin-bottom: 10px;
 }
 
-/* CAJA DE PUNTOS TOTAL (como el "300" rojo de tu imagen) */
+.slot-comodin.sin-margen {
+  margin-bottom: 0;
+}
+
+.slot-comodin-lleno {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #ff77ff;
+  background: #1a0a2f;
+  padding: 8px;
+}
+
+.slot-comodin-vacio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 108px;
+  box-sizing: border-box;
+  border: 1px dashed #ff77ff;
+  color: #ff77ff;
+  opacity: 0.6;
+}
+
+.comodin-nombre {
+  color: #ff77ff;
+  font-weight: bold;
+}
+
+.comodin-descripcion {
+  color: #bbb;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+/* ── COLUMNA CENTRAL (MANO) ────────────────────────────────────────────────── */
+.info-mano {
+  color: #aaa;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.zona-cartas {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+.ayuda-seleccion {
+  text-align: center;
+  color: #666;
+  margin: 0 0 10px 0;
+}
+
+/* ── BOTONES DE ORDEN ──────────────────────────────────────────────────────── */
+.botones-orden {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.orden-label {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.btn-orden {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #aaa;
+  background: #0a1128;
+  border: 1px solid #1a3a6a;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn-orden:hover {
+  color: #fff;
+  border-color: #0055ff;
+}
+
+.btn-orden.activo {
+  color: #00ccff;
+  border-color: #00ccff;
+  background: #051030;
+}
+
+/* ── BOTONERA ──────────────────────────────────────────────────────────────── */
+.botonera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #050a1f;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.fase-label {
+  color: gold;
+}
+
+.botones-accion {
+  display: flex;
+  gap: 15px;
+}
+
+.btn {
+  padding: 10px 20px;
+  color: white;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:disabled {
+  background-color: gray !important;
+  border-color: #555 !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-descartar {
+  background-color: #0056b3;
+  border: 1px solid #00aaff;
+}
+
+.btn-confirmar {
+  background-color: green;
+  border: 1px solid #00ff00;
+}
+
+/* ── COLUMNA DERECHA (PUNTUACIÓN) ──────────────────────────────────────────── */
+.desglose-puntos {
+  font-size: 1.1rem;
+  line-height: 2;
+}
+
+.valor-blanco    { color: white; }
+.valor-fichas    { color: #0055ff; }
+.valor-cartas    { color: #00ff00; }
+.valor-comodines { color: #ff77ff; }
+.valor-mult      { color: #ff0055; }
+.valor-mult-comodines { color: #ff77ff; font-size: 0.85rem; }
+
 .caja-total-puntos {
   background-color: #3b0a0a;
   border: 2px dotted #ff4d4d;
@@ -79,19 +278,87 @@
   text-shadow: 0 0 10px red;
 }
 
+.caja-total-label {
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 5px;
+}
+
+.resumen-puntajes {
+  margin-top: auto;
+  text-align: center;
+}
+
+.resumen-etiqueta {
+  margin-bottom: 2px;
+}
+
+.resumen-valor {
+  margin: 0 0 8px 0;
+}
+
+.resumen-ronda   { color: #00ffcc; }
+.resumen-total   { color: gold; }
+.resumen-monedas { color: #ffd700; }
+
+/* ── REGISTRO DE PARTIDA ───────────────────────────────────────────────────── */
+.registro-partida {
+  background-color: #1a1025;
+  border: 2px solid #6b21a8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 15px;
+  height: 90px;
+  display: flex;
+  flex-direction: column;
+}
+
+.registro-titulo {
+  margin: 0 0 6px 0;
+  color: #b721ff;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.registro-lista {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.registro-entrada {
+  color: #00ffcc;
+  font-size: 0.82rem;
+  display: flex;
+  gap: 8px;
+}
+
+.registro-ronda {
+  color: #b721ff;
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 22px;
+}
+
+.registro-vacio {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* ── CARTAS ────────────────────────────────────────────────────────────────── */
 .carta-base {
-  width: 60px; /* Ajusta el tamaño a tu gusto */
-  height: 85px; /* Ajusta el tamaño a tu gusto */
+  width: 60px;
+  height: 85px;
   border-radius: 4px;
   cursor: pointer;
   user-select: none;
-  
-  /* Para que tu pixel art siga viéndose súper nítido */
-  image-rendering: pixelated; 
-  
+  image-rendering: pixelated;
   transform: scale(1.5);
   margin: 15px;
-  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s, filter 0.2s;
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.2s,
+              filter 0.2s;
 }
 
 .carta-base:hover:not(.carta-seleccionada) {
@@ -100,5 +367,231 @@
 
 .carta-seleccionada {
   transform: scale(1.6) translateY(-15px);
-  filter: drop-shadow(0px 0px 4px cyan); 
+  filter: drop-shadow(0px 0px 4px cyan);
 }
+
+/* ── MAZO CONTADOR ─────────────────────────────────────────────────────────── */
+.mazo-contador {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #050a1f;
+  border: 1px solid #1a3a6a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.mazo-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+}
+
+.mazo-icono {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.mazo-total-num {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.mazo-total-label {
+  font-size: 0.65rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mazo-palos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mazo-palo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+  background: #0a1128;
+  border-radius: 6px;
+  padding: 4px 6px;
+  border: 1px solid #1a3a6a;
+}
+
+.mazo-palo-simbolo {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.mazo-palo-num {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #ddd;
+}
+
+.palo-corazones .mazo-palo-simbolo { color: #ff4466; }
+.palo-diamantes .mazo-palo-simbolo { color: #ff6644; }
+.palo-treboles  .mazo-palo-simbolo { color: #44dd88; }
+.palo-espadas   .mazo-palo-simbolo { color: #aac4ff; }
+
+
+/* ── PANTALLA FIN DE PARTIDA ───────────────────────────────────────────────── */
+.fin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.fin-modal {
+  background: #08091f;
+  border: 2px solid #b721ff;
+  border-radius: 16px;
+  padding: 36px 40px;
+  max-width: 560px;
+  width: 92%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-shadow: 0 0 40px rgba(183, 33, 255, 0.35);
+}
+
+/* Encabezado */
+.fin-encabezado {
+  text-align: center;
+}
+
+.fin-trofeo {
+  font-size: 3.5rem;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.fin-titulo {
+  color: #ffd700;
+  font-size: 1.6rem;
+  margin: 0 0 8px 0;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+.fin-ganador {
+  color: #aaa;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.fin-ganador-nombre {
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Tabla */
+.fin-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fin-th {
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border-bottom: 1px solid #1e1e3a;
+  text-align: left;
+}
+
+.fin-th-pts { text-align: right; }
+
+.fin-tr {
+  transition: background 0.1s;
+}
+
+.fin-tr:hover {
+  background: #0f1030;
+}
+
+.fin-tr-yo {
+  background: #120a2a;
+}
+
+.fin-td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #13132b;
+  color: #ccc;
+  font-size: 0.95rem;
+}
+
+.fin-td-pos {
+  font-size: 1.2rem;
+  width: 48px;
+  text-align: center;
+}
+
+.fin-td-nombre {
+  font-weight: 500;
+}
+
+.fin-tr-yo .fin-td-nombre {
+  color: #00ccff;
+}
+
+.fin-td-pts {
+  text-align: right;
+  font-weight: bold;
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-yo-badge {
+  color: #00ccff;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+/* Botones */
+.fin-botones {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.fin-btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  border: none;
+}
+
+.fin-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.fin-btn-reiniciar {
+  background: #1a6b2a;
+  color: #fff;
+  border: 1px solid #00ff55;
+}
+
+.fin-btn-salir {
+  background: #3a0a0a;
+  color: #ff6666;
+  border: 1px solid #ff3333;
+}
+
