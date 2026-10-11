@@ -812,3 +812,425 @@
   background-color: #227733;
 }
 
+
+/* ── MULTIJUGADOR Y LOBBY ──────────────────────────────────────────────────── */
+
+.btn-salir-partida {
+  background: #251230;
+  border: 1px solid #7722aa;
+  color: #ddaaee;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-salir-partida:hover {
+  background: #441858;
+  color: #fff;
+  border-color: #bb44ff;
+}
+
+.jugador-pts-ronda {
+  font-size: 0.85rem;
+  color: #00ffcc;
+}
+
+.jugador-oponente {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  background: #090e22;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #1a3a6a;
+}
+
+.jugador-eliminado {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.oponente-nombre {
+  color: #88bbff;
+  font-weight: bold;
+}
+
+.oponente-vidas {
+  display: flex;
+  gap: 2px;
+}
+
+.oponente-score {
+  color: #ffaa00;
+  font-size: 0.82rem;
+}
+
+.oponente-listo {
+  color: #00ff66;
+  font-weight: bold;
+  font-size: 0.8rem;
+  background: #052a12;
+  border: 1px solid #00aa44;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ── OVERLAY DE ESPERA ─────────────────────────────────────────────────────── */
+.espera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 15, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+}
+
+.espera-modal {
+  background: #090b24;
+  border: 2px solid #00ccff;
+  box-shadow: 0 0 30px rgba(0, 204, 255, 0.4);
+  border-radius: 16px;
+  padding: 35px;
+  text-align: center;
+  max-width: 480px;
+  width: 90%;
+  animation: aparecerCarta 0.3s ease-out;
+}
+
+.espera-icono {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+.espera-titulo {
+  color: #00ffcc;
+  font-size: 1.35rem;
+  margin: 0 0 10px 0;
+}
+
+.espera-texto {
+  font-size: 1.1rem;
+  color: #fff;
+  margin: 10px 0;
+}
+
+.espera-subtexto {
+  font-size: 0.9rem;
+  color: #88a;
+  margin: 15px 0 0 0;
+}
+
+/* ── LOBBY Y MENÚ PRINCIPAL ────────────────────────────────────────────────── */
+.lobby-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at center, #131238 0%, #060611 100%);
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+.lobby-modal {
+  background: #0b0e2b;
+  border: 2px solid #b721ff;
+  border-radius: 18px;
+  padding: 40px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 0 45px rgba(183, 33, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: aparecerCarta 0.4s ease-out;
+}
+
+.lobby-header {
+  text-align: center;
+}
+
+.lobby-titulo {
+  margin: 0;
+  font-size: 2.4rem;
+  color: #ffd700;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+  letter-spacing: 2px;
+}
+
+.lobby-subtitulo {
+  margin: 5px 0 0 0;
+  color: #00ccff;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+}
+
+.lobby-error {
+  background: #3d0a14;
+  border: 1px solid #ff3344;
+  color: #ff99aa;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.lobby-menu-opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-lobby {
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-lobby:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
+}
+
+.btn-solo {
+  background: #1952a5;
+  color: #fff;
+  border: 1px solid #00aaff;
+  box-shadow: 0 0 15px rgba(0, 170, 255, 0.25);
+}
+
+.btn-crear {
+  background: #7a1fa2;
+  color: #fff;
+  border: 1px solid #d45bf8;
+  box-shadow: 0 0 15px rgba(183, 33, 255, 0.25);
+}
+
+.btn-unirse {
+  background: #007766;
+  color: #fff;
+  border: 1px solid #00ffcc;
+  box-shadow: 0 0 15px rgba(0, 255, 204, 0.25);
+}
+
+.btn-volver {
+  background: #2a2a3e;
+  color: #ccc;
+  border: 1px solid #444;
+}
+
+.btn-iniciar {
+  background: #1a7a30;
+  color: #fff;
+  border: 1px solid #00ff66;
+  box-shadow: 0 0 20px rgba(0, 255, 102, 0.35);
+  font-size: 1.15rem;
+  padding: 16px 24px;
+}
+
+.lobby-divisor {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #667;
+  font-size: 0.78rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin: 6px 0;
+}
+
+.lobby-divisor::before,
+.lobby-divisor::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #222544;
+}
+
+.lobby-divisor span {
+  padding: 0 10px;
+}
+
+.lobby-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lobby-label {
+  color: #aad4ff;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.lobby-input {
+  background: #06091b;
+  border: 2px solid #28376d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.lobby-input:focus {
+  border-color: #00ccff;
+}
+
+.input-codigo {
+  text-align: center;
+  font-size: 1.6rem;
+  letter-spacing: 6px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #ffd700;
+}
+
+.lobby-form-botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.lobby-form-botones > * {
+  flex: 1;
+}
+
+/* ── SALA DE ESPERA LOBBY ── */
+.lobby-sala-espera {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.codigo-box {
+  background: #060a1e;
+  border: 2px dashed #ffd700;
+  border-radius: 10px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.codigo-label {
+  color: #889;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.codigo-valor {
+  color: #ffd700;
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.btn-copiar {
+  background: #192750;
+  border: 1px solid #3366cc;
+  color: #88ccff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-copiar:hover {
+  background: #253970;
+  color: #fff;
+}
+
+.sala-instruccion {
+  font-size: 0.85rem;
+  color: #889;
+  margin: 0;
+  text-align: center;
+}
+
+.jugadores-lista {
+  background: #070920;
+  border: 1px solid #1c234a;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.jugadores-titulo {
+  margin: 0 0 10px 0;
+  color: #00ccff;
+  font-size: 0.9rem;
+}
+
+.jugadores-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jugador-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0e1233;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #232c63;
+}
+
+.jugador-item-icono {
+  font-size: 1.1rem;
+}
+
+.jugador-item-nombre {
+  font-weight: bold;
+  color: #fff;
+  flex-grow: 1;
+}
+
+.jugador-badge-host {
+  background: #7a1fa2;
+  color: #fff;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: 1px solid #d45bf8;
+}
+
+.lobby-acciones-sala {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.esperando-host {
+  text-align: center;
+  color: #ffd700;
+  font-size: 0.95rem;
+  padding: 12px;
+  background: #141324;
+  border-radius: 8px;
+  border: 1px solid #443c10;
+}

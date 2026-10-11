@@ -1,8 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { CardData, EntradaHistorial, Palo } from '../types/gameType';
+import type { NetworkPlayer, RoundResolutionResult, FinalLeaderboardEntry } from '../types/multiplayerType';
+import type { ResultadoJugador } from '../components/PantallaFin';
 import { DeckManager } from '../logic/DeckManager';
 import { evaluarMano } from '../logic/HandEvaluator';
 import { generarOfertaTienda, type Comodin } from '../logic/jokers';
+import { getSocket } from '../services/socketService';
 
 // ─── Constantes de configuración ────────────────────────────────────────────
 export const CARTAS_POR_RONDA = 8;
@@ -13,7 +16,6 @@ export const MAX_RONDAS = 5;
 export const MAX_COMODINES = 3;
 export const COMODINES_EN_OFERTA = 3;
 export const VIDAS_INICIALES = 3; // Las vidas se miden en medios corazones (3 = 3 corazones = 6 hp)
-export const TOTAL_JUGADORES = 1; // TODO multijugador: recibir esto como parámetro del servidor
 export const COSTO_REROLL = 3;
 export const PORCENTAJE_VENTA = 0.4; // 40% del costo original
 
@@ -33,8 +35,18 @@ function crearRonda() {
   return { mazo, mano };
 }
 
+interface UseGameStateProps {
+  modo?: 'solo' | 'multiplayer';
+  codigoSala?: string;
+  nombreJugador?: string;
+  esHost?: boolean;
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
-export function useGameState() {
+export function useGameState(props?: UseGameStateProps) {
+  const modo = props?.modo || 'solo';
+  const esMultiplayer = modo === 'multiplayer';
+
   const [rondaInicial] = useState(crearRonda);
   const mazoRef = useRef<DeckManager>(rondaInicial.mazo);
 
@@ -47,11 +59,7 @@ export function useGameState() {
   const [puntajeRonda, setPuntajeRonda] = useState<number>(0);
   const [puntajeTotal, setPuntajeTotal] = useState<number>(0);
   const [monedas, setMonedas] = useState<number>(0);
-  // vidas se almacenan en medios corazones (6 = 3 corazones llenos).
-  // Medio corazón = 1, corazón completo = 2. Daño: penúltimo -1, último -2.
-  // setVidasHp se activa en terminarRonda cuando llegue el multijugador.
   const [vidasHp, setVidasHp] = useState<number>(VIDAS_INICIALES * 2);
-  void setVidasHp; // TODO multijugador
   const [comodinesEquipados, setComodinesEquipados] = useState<Comodin[]>([]);
   const [mostrarTienda, setMostrarTienda] = useState<boolean>(false);
   const [ofertaTienda, setOfertaTienda] = useState<Comodin[]>([]);
@@ -59,29 +67,30 @@ export function useGameState() {
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [mostrarFinPartida, setMostrarFinPartida] = useState<boolean>(false);
 
+  // ─── Estado multijugador ─────────────────────────────────────────────────────
+  const [oponentes, setOponentes] = useState<NetworkPlayer[]>([]);
+  const [esperandoOponentes, setEsperandoOponentes] = useState<boolean>(false);
+  const [esperandoSiguienteRonda, setEsperandoSiguienteRonda] = useState<boolean>(false);
+  const [resultadosTablaFin, setResultadosTablaFin] = useState<ResultadoJugador[]>([]);
+
   // ─── Derivados ──────────────────────────────────────────────────────────────
-  // vidasHp en escala de medios corazones → convertir a corazones para la UI
-  const vidasCorazones = vidasHp / 2;           // puede ser .5, 1, 1.5 … 3
+  const vidasCorazones = vidasHp / 2;
   const juegoTerminado = rondaActual > MAX_RONDAS || vidasHp <= 0;
   const derrota = vidasHp <= 0;
 
   // ─── Helpers internos ───────────────────────────────────────────────────────
-  const agregarHistorial = (descripcion: string, ronda: number) => {
+  const agregarHistorial = useCallback((descripcion: string, ronda: number) => {
     setHistorial(prev => [{ ronda, descripcion }, ...prev].slice(0, 20));
-  };
+  }, []);
 
-  const repartirRonda = (): CardData[] => {
+  const repartirRonda = useCallback((): CardData[] => {
     const ronda = crearRonda();
     mazoRef.current = ronda.mazo;
     setCartasEnMazo(ronda.mazo.cartasRestantes());
     setConteoMazo(conteoDesde(ronda.mazo));
     return ronda.mano;
-  };
+  }, []);
 
-  /**
-   * Clona las cartas seleccionadas y las reemplaza por cartas nuevas del mazo.
-   * Las cartas no seleccionadas se mantienen con sus objetos originales.
-   */
   const reponerCartasSeleccionadas = (): CardData[] => {
     const cantidad = mano.filter(c => c.seleccionada).length;
     const nuevasCartas = mazoRef.current.robar(cantidad);
@@ -89,10 +98,8 @@ export function useGameState() {
 
     const nuevaMano = mano.map(carta => {
       if (carta.seleccionada) {
-        // nuevasCartas ya vienen sin seleccionada=true desde DeckManager
         return { ...nuevasCartas[idx++] };
       }
-      // Clonar para no mutar el objeto del estado anterior
       return { ...carta, seleccionada: false };
     });
 
@@ -100,6 +107,144 @@ export function useGameState() {
     setConteoMazo(conteoDesde(mazoRef.current));
     return nuevaMano;
   };
+
+  // ─── Suscripción Socket.IO para multijugador ────────────────────────────────
+  useEffect(() => {
+    if (!esMultiplayer) return;
+
+    const socket = getSocket();
+
+    const handleOpponentScore = ({
+      playerId,
+      currentRoundScore,
+      totalScore,
+    }: {
+      playerId: string;
+      currentRoundScore: number;
+      totalScore: number;
+    }) => {
+      setOponentes(prev =>
+        prev.map(p =>
+          p.id === playerId ? { ...p, currentRoundScore, totalScore } : p
+        )
+      );
+    };
+
+    const handleOpponentFinished = ({
+      playerId,
+      currentRoundScore,
+    }: {
+      playerId: string;
+      currentRoundScore: number;
+    }) => {
+      setOponentes(prev =>
+        prev.map(p =>
+          p.id === playerId
+            ? { ...p, currentRoundScore, roundFinished: true }
+            : p
+        )
+      );
+    };
+
+    const handleRoundResolved = ({
+      round,
+      results,
+      isGameOver,
+      finalLeaderboard,
+    }: {
+      round: number;
+      results: RoundResolutionResult[];
+      isGameOver: boolean;
+      finalLeaderboard?: FinalLeaderboardEntry[];
+    }) => {
+      setEsperandoOponentes(false);
+
+      const miResultado = results.find(r => r.playerId === socket.id);
+      if (miResultado) {
+        setVidasHp(miResultado.newHp);
+        setMonedas(prev => prev + miResultado.coinsEarned);
+
+        const detalleDaño = miResultado.damage > 0
+          ? ` 💔 Recibiste -${miResultado.damage / 2} corazón`
+          : ' 🛡️ ¡Sin daño!';
+        const detalleMonedas = ` +${miResultado.coinsEarned}🪙`;
+
+        agregarHistorial(
+          `Fin ronda ${round}. Puesto #${miResultado.rank}.${detalleMonedas}.${detalleDaño}`,
+          round
+        );
+      }
+
+      // Actualizar vidas y monedas de oponentes
+      setOponentes(prev =>
+        prev.map(p => {
+          const res = results.find(r => r.playerId === p.id);
+          if (res) {
+            return {
+              ...p,
+              hp: res.newHp,
+              isAlive: res.isAlive,
+              roundFinished: false,
+              shopReady: false,
+            };
+          }
+          return p;
+        })
+      );
+
+      if (isGameOver) {
+        if (finalLeaderboard) {
+          const formatResultados: ResultadoJugador[] = finalLeaderboard.map(entry => ({
+            nombre: entry.name,
+            puntaje: entry.totalScore,
+            eresTu: entry.playerId === socket.id,
+          }));
+          setResultadosTablaFin(formatResultados);
+        }
+        setMostrarFinPartida(true);
+      } else {
+        setRondaActual(round + 1);
+        semillaTiendaRef.current = 0;
+        setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, 0));
+        setMostrarTienda(true);
+      }
+    };
+
+    const handleAllShopReady = ({
+      nextRound,
+      players,
+    }: {
+      nextRound: number;
+      players: NetworkPlayer[];
+    }) => {
+      setMostrarTienda(false);
+      setEsperandoSiguienteRonda(false);
+      setMano(repartirRonda());
+      setDescartesRestantes(MAX_DESCARTES_POR_RONDA);
+      setManosRestantes(MAX_MANOS_POR_RONDA);
+      setPuntajeRonda(0);
+      setRondaActual(nextRound);
+      setOponentes(players.filter(p => p.id !== socket.id));
+    };
+
+    const handleRoomUpdated = ({ players }: { players: NetworkPlayer[] }) => {
+      setOponentes(players.filter(p => p.id !== socket.id));
+    };
+
+    socket.on('opponent_score_updated', handleOpponentScore);
+    socket.on('opponent_finished_round', handleOpponentFinished);
+    socket.on('round_resolved', handleRoundResolved);
+    socket.on('all_shop_ready', handleAllShopReady);
+    socket.on('room_updated', handleRoomUpdated);
+
+    return () => {
+      socket.off('opponent_score_updated', handleOpponentScore);
+      socket.off('opponent_finished_round', handleOpponentFinished);
+      socket.off('round_resolved', handleRoundResolved);
+      socket.off('all_shop_ready', handleAllShopReady);
+      socket.off('room_updated', handleRoomUpdated);
+    };
+  }, [esMultiplayer, comodinesEquipados, repartirRonda, agregarHistorial]);
 
   // ─── Acciones del jugador ───────────────────────────────────────────────────
 
@@ -115,7 +260,7 @@ export function useGameState() {
   };
 
   const descartarCartas = () => {
-    if (descartesRestantes <= 0) return;
+    if (descartesRestantes <= 0 || esperandoOponentes) return;
     if (!mano.some(c => c.seleccionada)) return;
 
     const cantidad = mano.filter(c => c.seleccionada).length;
@@ -125,15 +270,16 @@ export function useGameState() {
   };
 
   const confirmarMano = () => {
-    if (juegoTerminado || manosRestantes <= 0) return;
+    if (juegoTerminado || manosRestantes <= 0 || esperandoOponentes) return;
 
     const cartasAJugar = mano.filter(carta => carta.seleccionada);
     if (cartasAJugar.length === 0) return;
 
     const calculo = evaluarMano(cartasAJugar, comodinesEquipados);
+    const nuevoPuntajeRonda = puntajeRonda + calculo.puntajeFinal;
     const nuevoPuntajeTotal = puntajeTotal + calculo.puntajeFinal;
 
-    setPuntajeRonda(prev => prev + calculo.puntajeFinal);
+    setPuntajeRonda(nuevoPuntajeRonda);
     setPuntajeTotal(nuevoPuntajeTotal);
     setMano(reponerCartasSeleccionadas());
 
@@ -145,31 +291,33 @@ export function useGameState() {
       rondaActual
     );
 
-    if (manosQueQuedan === 0) {
-      terminarRonda(nuevoPuntajeTotal);
+    if (esMultiplayer) {
+      const socket = getSocket();
+      socket.emit('update_live_score', {
+        currentRoundScore: nuevoPuntajeRonda,
+        totalScore: nuevoPuntajeTotal,
+      });
+
+      if (manosQueQuedan === 0) {
+        setEsperandoOponentes(true);
+        socket.emit('finish_round', {
+          roundScore: nuevoPuntajeRonda,
+          totalScore: nuevoPuntajeTotal,
+        });
+      }
+    } else {
+      if (manosQueQuedan === 0) {
+        terminarRondaSolo(nuevoPuntajeTotal);
+      }
     }
   };
 
-  const terminarRonda = (puntajeDeRonda: number) => {
-    // ── Posición del jugador ──────────────────────────────────────────────────
-    // En modo 1-jugador siempre es 1er lugar. Con multijugador, este valor vendrá
-    // del servidor tras comparar el puntajeRonda de todos los jugadores.
-    const posicion: 1 | 2 | 3 | 4 = 1; // TODO multijugador
-
-    // ── Monedas ───────────────────────────────────────────────────────────────
+  const terminarRondaSolo = (puntajeDeRonda: number) => {
+    const posicion: 1 | 2 | 3 | 4 = 1;
     const monedasPosicion = MONEDAS_POR_POSICION[posicion - 1];
     const monedasPuntos = Math.floor(puntajeDeRonda / 100) * MONEDAS_POR_100_PUNTOS;
     const monedasGanadas = monedasPosicion + monedasPuntos;
     setMonedas(prev => prev + monedasGanadas);
-
-    // ── Daño a vidas ─────────────────────────────────────────────────────────
-    // Regla: los últimos 2 jugadores reciben daño. Si solo hay 2 jugadores,
-    // únicamente el último recibe daño.
-    // En modo 1-jugador nadie recibe daño (no hay comparación de puntajes).
-    // TODO multijugador: recibir 'posicion' y 'totalJugadores' del servidor y aplicar:
-    //   if (totalJugadores > 2 && posicion === totalJugadores - 1) → -1 hp (medio corazón)
-    //   if (posicion === totalJugadores) → -2 hp (un corazón completo)
-    //   if (totalJugadores === 2 && posicion === 2) → -1 hp (medio corazón)
 
     const siguienteRonda = rondaActual + 1;
     setRondaActual(siguienteRonda);
@@ -186,11 +334,13 @@ export function useGameState() {
       setMostrarTienda(true);
     } else {
       agregarHistorial(`¡Partida terminada! Puntaje final: ${puntajeDeRonda}`, rondaActual);
+      setResultadosTablaFin([
+        { nombre: 'TÚ', puntaje: puntajeDeRonda, eresTu: true },
+      ]);
       setMostrarFinPartida(true);
     }
   };
 
-  /** Vende un comodín equipado y devuelve el 40% de su costo en monedas. */
   const venderComodin = (comodinId: string) => {
     const comodin = comodinesEquipados.find(c => c.id === comodinId);
     if (!comodin) return;
@@ -211,14 +361,19 @@ export function useGameState() {
   };
 
   const continuarTrasTienda = () => {
-    setMostrarTienda(false);
-    setMano(repartirRonda());
-    setDescartesRestantes(MAX_DESCARTES_POR_RONDA);
-    setManosRestantes(MAX_MANOS_POR_RONDA);
-    setPuntajeRonda(0);
+    if (esMultiplayer) {
+      setEsperandoSiguienteRonda(true);
+      const socket = getSocket();
+      socket.emit('shop_ready');
+    } else {
+      setMostrarTienda(false);
+      setMano(repartirRonda());
+      setDescartesRestantes(MAX_DESCARTES_POR_RONDA);
+      setManosRestantes(MAX_MANOS_POR_RONDA);
+      setPuntajeRonda(0);
+    }
   };
 
-  /** Re-roll: gasta COSTO_REROLL monedas y muestra otros comodines en la tienda. */
   const rerollTienda = () => {
     if (monedas < COSTO_REROLL) return;
     semillaTiendaRef.current += 1;
@@ -226,8 +381,11 @@ export function useGameState() {
     setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, semillaTiendaRef.current));
   };
 
-  /** Reinicia toda la partida desde cero (nueva ronda 1, sin comodines ni monedas). */
   const reiniciarJuego = () => {
+    if (esMultiplayer) {
+      const socket = getSocket();
+      socket.emit('play_again');
+    }
     const ronda = crearRonda();
     mazoRef.current = ronda.mazo;
     setMano(ronda.mano);
@@ -245,10 +403,11 @@ export function useGameState() {
     setOfertaTienda([]);
     semillaTiendaRef.current = 0;
     setHistorial([]);
+    setEsperandoOponentes(false);
+    setEsperandoSiguienteRonda(false);
     setMostrarFinPartida(false);
   };
 
-  // ─── Retorno público ────────────────────────────────────────────────────────
   return {
     // Estado
     mano,
@@ -269,6 +428,10 @@ export function useGameState() {
     mostrarFinPartida,
     juegoTerminado,
     derrota,
+    oponentes,
+    esperandoOponentes,
+    esperandoSiguienteRonda,
+    resultadosTablaFin,
     // Acciones
     alternarSeleccion,
     descartarCartas,
@@ -278,5 +441,6 @@ export function useGameState() {
     continuarTrasTienda,
     rerollTienda,
     reiniciarJuego,
+    setOponentes,
   };
 }

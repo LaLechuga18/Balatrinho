@@ -7,6 +7,7 @@ interface TiendaProps {
   comodinesEquipados: Comodin[];
   maxComodines: number;
   costoReroll: number;
+  esperandoSiguienteRonda?: boolean;
   onComprar: (comodin: Comodin) => void;
   onReroll: () => void;
   onContinuar: () => void;
@@ -18,12 +19,13 @@ export function Tienda({
   comodinesEquipados,
   maxComodines,
   costoReroll,
+  esperandoSiguienteRonda = false,
   onComprar,
   onReroll,
   onContinuar,
 }: TiendaProps) {
   const slotsLlenos = comodinesEquipados.length >= maxComodines;
-  const puedeReroll = monedas >= costoReroll;
+  const puedeReroll = monedas >= costoReroll && !esperandoSiguienteRonda;
 
   return (
     <div className="tienda-overlay">
@@ -45,7 +47,11 @@ export function Tienda({
           <div className="tienda-oferta">
             {oferta.map((comodin) => {
               const yaEquipado = comodinesEquipados.some((c) => c.id === comodin.id);
-              const puedeComprar = !yaEquipado && !slotsLlenos && monedas >= comodin.costo;
+              const puedeComprar =
+                !esperandoSiguienteRonda &&
+                !yaEquipado &&
+                !slotsLlenos &&
+                monedas >= comodin.costo;
 
               return (
                 <div
@@ -82,8 +88,12 @@ export function Tienda({
             🎲 Re-roll  <span className="reroll-costo">🪙 {costoReroll}</span>
           </button>
 
-          <button className="tienda-btn-continuar" onClick={onContinuar}>
-            CONTINUAR ▶
+          <button
+            className={`tienda-btn-continuar${esperandoSiguienteRonda ? ' disabled' : ''}`}
+            onClick={onContinuar}
+            disabled={esperandoSiguienteRonda}
+          >
+            {esperandoSiguienteRonda ? '⏳ ESPERANDO OPONENTES...' : 'CONTINUAR ▶'}
           </button>
         </div>
 
