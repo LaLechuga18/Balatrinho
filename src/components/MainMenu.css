@@ -1,0 +1,257 @@
+/* ===== PANTALLA DEL MENÚ PRINCIPAL ===== */
+.menu-screen {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4a0a12;
+    color: #fff;
+    font-family: 'Pixelify Sans', 'Courier New', monospace;
+}
+
+/* ----- Fondo animado: manchas suaves que se mueven (solo transform: no pesa en la GPU) ----- */
+.menu-blob {
+    position: absolute;
+    width: 95vmax;
+    height: 95vmax;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, var(--blob-color) 0%, transparent 66%);
+    will-change: transform;
+}
+
+.menu-blob--1 {
+    --blob-color: #e0242e;
+    top: -30%;
+    left: -20%;
+    animation: menu-drift-a 24s ease-in-out infinite alternate;
+}
+
+.menu-blob--2 {
+    --blob-color: #1f80e6;
+    top: -25%;
+    left: 35%;
+    animation: menu-drift-b 28s ease-in-out infinite alternate;
+}
+
+.menu-blob--3 {
+    --blob-color: #a5121d;
+    top: 30%;
+    left: -30%;
+    animation: menu-drift-c 32s ease-in-out infinite alternate;
+}
+
+.menu-blob--4 {
+    --blob-color: #1565cf;
+    top: 30%;
+    left: 30%;
+    animation: menu-drift-a 26s ease-in-out infinite alternate-reverse;
+}
+
+.menu-blob--5 {
+    --blob-color: #ff3b46;
+    top: 5%;
+    left: 15%;
+    animation: menu-drift-b 36s ease-in-out infinite alternate-reverse;
+    opacity: 0.75;
+}
+
+.menu-blob--6 {
+    --blob-color: #3a9bff;
+    top: 45%;
+    left: -5%;
+    animation: menu-drift-c 30s ease-in-out infinite alternate;
+    opacity: 0.9;
+}
+
+@keyframes menu-drift-a {
+    from {
+        transform: translate(-22vw, -14vh) scale(1) rotate(0deg);
+    }
+
+    to {
+        transform: translate(34vw, 26vh) scale(1.3) rotate(60deg);
+    }
+}
+
+@keyframes menu-drift-b {
+    from {
+        transform: translate(28vw, 16vh) scale(1.2);
+    }
+
+    to {
+        transform: translate(-34vw, -20vh) scale(0.9);
+    }
+}
+
+@keyframes menu-drift-c {
+    from {
+        transform: translate(-16vw, 24vh) scale(0.95);
+    }
+
+    to {
+        transform: translate(38vw, -20vh) scale(1.3);
+    }
+}
+
+/* Oscurece los bordes para que el logo y los botones resalten */
+.menu-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 40%, rgba(10, 0, 4, 0.65) 100%);
+}
+
+/* ----- Contenido ----- */
+.menu-version {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.75);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.menu-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(32px, 8vh, 80px);
+    padding: 20px;
+    animation: menu-appear 0.7s ease-out both;
+}
+
+@keyframes menu-appear {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ----- Logo ----- */
+.menu-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-size: clamp(2.6rem, 10.5vw, 7.5rem);
+    /* el tamaño de todo el logo sale de aquí */
+    line-height: 1;
+}
+
+.menu-logo-text {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #f4f0e6;
+    -webkit-text-stroke: 0.1em #1b2a35;
+    paint-order: stroke fill;
+    text-shadow:
+        0 0.05em 0 #1b2a35,
+        0 0.09em 0 rgba(0, 0, 0, 0.4);
+}
+
+.menu-logo-card {
+    height: 1.55em;
+    width: auto;
+    margin: 0 0.12em;
+    image-rendering: pixelated;
+    /* mantiene nítido el pixel art */
+    filter: drop-shadow(0 0.07em 0 rgba(0, 0, 0, 0.4));
+    animation: menu-card-float 3.6s ease-in-out infinite;
+}
+
+@keyframes menu-card-float {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(-3deg);
+    }
+
+    50% {
+        transform: translateY(-0.08em) rotate(3deg);
+    }
+}
+
+/* ----- Botones ----- */
+.menu-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    padding: 14px;
+    background: #27363d;
+    border: 4px solid #1b262c;
+    border-radius: 14px;
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+}
+
+.menu-button {
+    min-width: 230px;
+    padding: 16px 30px 18px;
+    font-family: inherit;
+    font-size: clamp(1.05rem, 2.4vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.08s, filter 0.15s, box-shadow 0.08s;
+}
+
+.menu-button--blue {
+    background: #0b8cf0;
+    box-shadow: 0 6px 0 #0a58a6;
+}
+
+.menu-button--gold {
+    background: #b69a52;
+    box-shadow: 0 6px 0 #7e6a33;
+}
+
+.menu-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.12);
+}
+
+.menu-button:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.menu-button:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+}
+
+.menu-button:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.65) brightness(0.65);
+}
+
+.menu-button small {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.55em;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    opacity: 0.85;
+}
+
+/* Quien tenga activada la opción de "reducir movimiento" no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+
+    .menu-blob,
+    .menu-logo-card,
+    .menu-content {
+        animation: none;
+    }
+}
