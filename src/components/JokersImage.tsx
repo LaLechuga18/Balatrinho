@@ -3,8 +3,8 @@ import type { Comodin } from '../logic/jokers';
 
 interface ComodinImagenProps {
   comodin: Comodin;
-  ancho?: number;
-  alto?: number;
+  ancho?: number | string;
+  alto?: number | string;
 }
 
 // Recuadro con la imagen del joker. Si el comodín no tiene imagen, o el archivo
@@ -41,7 +41,7 @@ export function ComodinImagen({ comodin, ancho = 64, alto = 90 }: ComodinImagenP
           }}
         />
       ) : (
-        <span style={{ fontSize: ancho * 0.5 }}>🃏</span>
+        <span style={{ fontSize: typeof ancho === 'number' ? ancho * 0.5 : '2.2rem' }}>🃏</span>
       )}
     </div>
   );

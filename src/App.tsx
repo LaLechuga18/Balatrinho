@@ -16,6 +16,8 @@ import {
   VIDAS_INICIALES,
 } from './hooks/useGameState';
 import './App.css';
+import '@fontsource/jersey-10/400.css';
+import './GameTable.css';
 
 // Re-exportamos para que el comentario siga documentando los límites del mazo
 // CARTAS_POR_RONDA(8) + MAX_MANOS*MAX_SELECCION(20) + MAX_DESCARTES*MAX_SELECCION(15) = 43 ≤ 52 ✓
@@ -111,8 +113,10 @@ function App() {
     ? '🏁 JUEGO TERMINADO'
     : 'INTERCAMBIO';
 
+  const hayJugada = cartasSeleccionadasCount > 0;
+
   return (
-    <div className="pantalla-juego">
+    <div className="mesa">
 
       {/* PANTALLA DE FIN DE PARTIDA */}
       {mostrarFinPartida && (
@@ -141,159 +145,161 @@ function App() {
         />
       )}
 
-      {/* 1. BARRA SUPERIOR */}
-      <div className="barra-superior">
-        <div className="jugador-activo">
-          <span className="jugador-nombre">TÚ</span>
-          <span className="jugador-vidas">
-            {estadosCorazones(vidasCorazones, VIDAS_INICIALES).map((estado, i) => (
-              <CorazonVida key={i} estado={estado} />
-            ))}
-          </span>
-          <span className="jugador-monedas">🪙 {monedas}</span>
+      {/* ── PANEL LATERAL: ronda, jugada actual, contadores, jugadores y registro ── */}
+      <aside className="mesa-lateral">
+        <div className="mesa-ronda">
+          <span className="mesa-ronda-titulo">RONDA {Math.min(rondaActual, MAX_RONDAS)}/{MAX_RONDAS}</span>
+          <span className="mesa-ronda-fase">{faseLabel}</span>
         </div>
-        <div className="jugador-mockup" style={{ opacity: 0.4 }}>Jugador 2 ♥♥ | 🪙 —</div>
-        <div className="jugador-mockup" style={{ opacity: 0.4 }}>Jugador 3 ♥♥♥ | 🪙 —</div>
-        <div className="jugador-mockup" style={{ opacity: 0.4 }}>Jugador 4 ♥ | 🪙 —</div>
-      </div>
 
-      {/* 2. ZONA CENTRAL (3 Columnas) */}
-      <div className="zona-central">
+        <div className="mesa-bloque">
+          <div className="mesa-bloque-titulo">Puntaje de la ronda</div>
+          <div className="mesa-bloque-valor">{puntajeRonda}</div>
+        </div>
 
-        {/* COLUMNA IZQUIERDA: COMODINES EQUIPADOS */}
-        <div className="panel panel-comodines">
-          <h3 className="panel-titulo titulo-comodines">COMODINES</h3>
-          {Array.from({ length: MAX_COMODINES }).map((_, index) => {
-            const comodin = comodinesEquipados[index];
-            const esUltimo = index === MAX_COMODINES - 1;
+        <div className="mesa-bloque mesa-jugada">
+          <div className="mesa-jugada-nombre">{hayJugada ? resultadoScoring.nombreMano : '—'}</div>
+          <div className="mesa-formula">
+            <span className="mesa-formula-fichas">{resultadoScoring.fichasTotales}</span>
+            <span className="mesa-formula-x">×</span>
+            <span className="mesa-formula-mult">{resultadoScoring.mult}</span>
+          </div>
+          <div className="mesa-jugada-total">= {resultadoScoring.puntajeFinal}</div>
+          <div className="mesa-jugada-detalle">
+            Base {resultadoScoring.fichasBase} · Cartas +{resultadoScoring.fichasCartas} · Comodines +{resultadoScoring.fichasComodines}
+            {resultadoScoring.multComodines > 0 && ` · Mult +${resultadoScoring.multComodines}`}
+          </div>
+        </div>
 
-            return comodin ? (
-              <div key={comodin.id} className={`slot-comodin slot-comodin-lleno${esUltimo ? ' sin-margen' : ''}`}>
-                <ComodinImagen comodin={comodin} />
-                <div>
-                  <div className="comodin-nombre">{comodin.nombre}</div>
-                  <div className="comodin-descripcion">{comodin.descripcion}</div>
-                </div>
-              </div>
+        <div className="mesa-fichas">
+          <div className="mesa-ficha mesa-ficha--azul">
+            <span className="mesa-ficha-etiqueta">Manos</span>
+            <span className="mesa-ficha-valor">{manosRestantes}</span>
+          </div>
+          <div className="mesa-ficha mesa-ficha--roja">
+            <span className="mesa-ficha-etiqueta">Descartes</span>
+            <span className="mesa-ficha-valor">{descartesRestantes}</span>
+          </div>
+          <div className="mesa-ficha mesa-ficha--oro">
+            <span className="mesa-ficha-etiqueta">Monedas</span>
+            <span className="mesa-ficha-valor">🪙 {monedas}</span>
+          </div>
+          <div className="mesa-ficha mesa-ficha--gris">
+            <span className="mesa-ficha-etiqueta">Acumulado</span>
+            <span className="mesa-ficha-valor">{puntajeTotal}</span>
+          </div>
+        </div>
+
+        <div className="mesa-bloque mesa-jugadores">
+          <div className="mesa-jugador mesa-jugador--yo">
+            <span>TÚ</span>
+            <span className="jugador-vidas">
+              {estadosCorazones(vidasCorazones, VIDAS_INICIALES).map((estado, i) => (
+                <CorazonVida key={i} estado={estado} />
+              ))}
+            </span>
+          </div>
+          <div className="mesa-jugador mesa-jugador--mock">Jugador 2 ♥♥ | 🪙 —</div>
+          <div className="mesa-jugador mesa-jugador--mock">Jugador 3 ♥♥♥ | 🪙 —</div>
+          <div className="mesa-jugador mesa-jugador--mock">Jugador 4 ♥ | 🪙 —</div>
+        </div>
+
+        <div className="mesa-bloque mesa-registro">
+          <div className="mesa-bloque-titulo">Registro de partida</div>
+          <div className="registro-lista">
+            {historial.length === 0 ? (
+              <div className="registro-vacio">Esperando acción del jugador...</div>
             ) : (
-              <div key={`vacio-${index}`} className={`slot-comodin slot-comodin-vacio${esUltimo ? ' sin-margen' : ''}`}>
-                Vacío
-              </div>
-            );
-          })}
+              historial.map((entrada, i) => (
+                <div key={i} className="registro-entrada">
+                  <span className="registro-ronda">R{entrada.ronda}</span>
+                  {entrada.descripcion}
+                </div>
+              ))
+            )}
+          </div>
         </div>
+      </aside>
 
-        {/* COLUMNA CENTRAL: TU MANO */}
-        <div className="panel panel-mano">
-          <h3 className="panel-titulo titulo-mano">TU MANO</h3>
+      {/* ── TABLERO: comodines arriba, centro libre, acciones y mano abajo ── */}
+      <main className="mesa-tablero">
+        <section className="mesa-comodines" aria-label="Comodines">
+          <div className="mesa-seccion-titulo">COMODINES {comodinesEquipados.length}/{MAX_COMODINES}</div>
+          <div className="mesa-comodines-fila">
+            {Array.from({ length: MAX_COMODINES }).map((_, index) => {
+              const comodin = comodinesEquipados[index];
 
-          <div className="info-mano">
-            Ronda: {Math.min(rondaActual, MAX_RONDAS)} / {MAX_RONDAS}
-            {' | '}Seleccionadas: {cartasSeleccionadasCount} / {MAX_SELECCION}
+              return comodin ? (
+                <div key={comodin.id} className="mesa-slot">
+                  <div className="mesa-joker" title={`${comodin.nombre}: ${comodin.descripcion}`}>
+                    <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
+                  </div>
+                  <span className="mesa-joker-nombre">{comodin.nombre}</span>
+                </div>
+              ) : (
+                <div key={`vacio-${index}`} className="mesa-slot">
+                  <div className="mesa-joker mesa-joker--vacio">Vacío</div>
+                  <span className="mesa-joker-nombre">&nbsp;</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Centro: más adelante aquí aparecerán las cartas jugadas */}
+        <section className="mesa-centro">
+          {juegoTerminado ? (
+            <p className="mesa-pista mesa-pista--fin">{faseLabel}</p>
+          ) : (
+            <p className="mesa-pista">Selecciona hasta {MAX_SELECCION} cartas para jugarlas o descartarlas</p>
+          )}
+        </section>
+
+        <section className="mesa-acciones">
+          <button
+            onClick={confirmarMano}
+            disabled={juegoTerminado || manosRestantes === 0 || cartasSeleccionadasCount === 0}
+            className="mesa-btn mesa-btn--azul"
+          >
+            JUGAR MANO
+          </button>
+
+          <div className="mesa-ordenar">
+            <span className="mesa-ordenar-label">ORDENAR</span>
+            <button
+              className={`mesa-btn-orden${ordenMano === 'valor' ? ' activo' : ''}`}
+              onClick={() => setOrdenMano(prev => prev === 'valor' ? 'original' : 'valor')}
+            >
+              Valor
+            </button>
+            <button
+              className={`mesa-btn-orden${ordenMano === 'palo' ? ' activo' : ''}`}
+              onClick={() => setOrdenMano(prev => prev === 'palo' ? 'original' : 'palo')}
+            >
+              Palo
+            </button>
           </div>
 
-          <MazoContador total={cartasEnMazo} conteo={conteoMazo} />
+          <button
+            onClick={descartarCartas}
+            disabled={juegoTerminado || descartesRestantes === 0 || cartasSeleccionadasCount === 0}
+            className="mesa-btn mesa-btn--roja"
+          >
+            DESCARTAR
+          </button>
+        </section>
 
-          {/* CARTAS */}
-          <div className="zona-cartas">
+        <section className="mesa-mano-fila">
+          <div className="mesa-cartas">
             {manoOrdenada.map((carta) => (
               <Card key={`${carta.valor}-${carta.palo}`} data={carta} onClick={() => alternarSeleccion(mano.indexOf(carta))} />
             ))}
           </div>
-
-          {/* BOTONES DE ORDEN */}
-          <div className="botones-orden">
-            <span className="orden-label">Ordenar:</span>
-            <button
-              className={`btn-orden${ordenMano === 'valor' ? ' activo' : ''}`}
-              onClick={() => setOrdenMano(prev => prev === 'valor' ? 'original' : 'valor')}
-            >
-              Por valor  A→2
-            </button>
-            <button
-              className={`btn-orden${ordenMano === 'palo' ? ' activo' : ''}`}
-              onClick={() => setOrdenMano(prev => prev === 'palo' ? 'original' : 'palo')}
-            >
-              Por palo  ♠♥♦♣
-            </button>
+          <div className="mesa-mazo">
+            <MazoContador total={cartasEnMazo} conteo={conteoMazo} />
           </div>
-
-          <p className="ayuda-seleccion">Selecciona hasta {MAX_SELECCION} cartas para descartarlas o jugarlas</p>
-
-          {/* BOTONERA */}
-          <div className="botonera">
-            <div className="fase-label">
-              Fase: <b>{faseLabel}</b>
-            </div>
-            <div className="botones-accion">
-              <button
-                onClick={descartarCartas}
-                disabled={juegoTerminado || descartesRestantes === 0 || cartasSeleccionadasCount === 0}
-                className="btn btn-descartar"
-              >
-                DESCARTAR ({descartesRestantes})
-              </button>
-              <button
-                onClick={confirmarMano}
-                disabled={juegoTerminado || manosRestantes === 0 || cartasSeleccionadasCount === 0}
-                className="btn btn-confirmar"
-              >
-                CONFIRMAR MANO ({manosRestantes})
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* COLUMNA DERECHA: PUNTUACIÓN */}
-        <div className="panel panel-puntuacion">
-          <h3 className="panel-titulo titulo-puntuacion">PUNTUACIÓN</h3>
-
-          <div className="desglose-puntos">
-            <div>Mejor mano: <span className="valor-blanco">{resultadoScoring.nombreMano}</span></div>
-            <div>Base: <span className="valor-fichas">{resultadoScoring.fichasBase} 🟦</span></div>
-            <div>Bonos cartas: <span className="valor-cartas">+{resultadoScoring.fichasCartas}</span></div>
-            <div>Bonos comodines: <span className="valor-comodines">+{resultadoScoring.fichasComodines}</span></div>
-            <div>
-              Mult.: <span className="valor-mult">x{resultadoScoring.mult} 🟥</span>
-              {resultadoScoring.multComodines > 0 && (
-                <span className="valor-mult-comodines"> (+{resultadoScoring.multComodines} comodines)</span>
-              )}
-            </div>
-          </div>
-
-          <div className="caja-total-puntos">
-            <div className="caja-total-label">Score aproximado:</div>
-            {resultadoScoring.puntajeFinal}
-          </div>
-
-          <div className="resumen-puntajes">
-            <p className="resumen-etiqueta">Puntaje de la ronda:</p>
-            <h3 className="resumen-valor resumen-ronda">{puntajeRonda}</h3>
-            <p className="resumen-etiqueta">Puntaje acumulado:</p>
-            <h3 className="resumen-valor resumen-total">{puntajeTotal}</h3>
-            <p className="resumen-etiqueta">Monedas:</p>
-            <h3 className="resumen-valor resumen-monedas">🪙 {monedas}</h3>
-          </div>
-        </div>
-
-      </div>
-
-      {/* 3. REGISTRO DE PARTIDA */}
-      <div className="registro-partida">
-        <h4 className="registro-titulo">REGISTRO DE PARTIDA</h4>
-        <div className="registro-lista">
-          {historial.length === 0 ? (
-            <div className="registro-vacio">Esperando acción del jugador...</div>
-          ) : (
-            historial.map((entrada, i) => (
-              <div key={i} className="registro-entrada">
-                <span className="registro-ronda">R{entrada.ronda}</span>
-                {entrada.descripcion}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+        </section>
+      </main>
 
     </div>
   );
