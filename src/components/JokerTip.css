@@ -1,0 +1,81 @@
+/* ===== DESCRIPCIÓN FLOTANTE DE LOS COMODINES ===== */
+
+/* El contenedor del comodín lleva esta clase para que la descripción se ancle a él */
+.joker-tip-anclaje {
+    position: relative;
+}
+
+.joker-tip {
+    position: absolute;
+    left: 50%;
+    z-index: 50;
+    width: max-content;
+    max-width: min(240px, 60vw);
+    box-sizing: border-box;
+    padding: 8px 12px 9px;
+    text-align: left;
+    color: #f4f0e6;
+    background: #0f1a1f;
+    border: 3px solid #ff77ff;
+    border-radius: 10px;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4);
+    font-family: 'Jersey 10', 'Courier New', monospace;
+    font-synthesis: none;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(4px);
+    transition: opacity 0.12s, transform 0.12s, visibility 0.12s;
+}
+
+.joker-tip--abajo {
+    top: calc(100% + 10px);
+}
+
+.joker-tip--arriba {
+    bottom: calc(100% + 10px);
+}
+
+/* Flechita que apunta al comodín */
+.joker-tip::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+}
+
+.joker-tip--abajo::before {
+    top: -17px;
+    border-bottom-color: #ff77ff;
+}
+
+.joker-tip--arriba::before {
+    bottom: -17px;
+    border-top-color: #ff77ff;
+}
+
+.joker-tip-anclaje:hover>.joker-tip,
+.joker-tip-anclaje:focus-within>.joker-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.joker-tip-nombre {
+    font-size: 1.6rem;
+    line-height: 1.1;
+    color: #ff9bff;
+}
+
+.joker-tip-descripcion {
+    margin-top: 3px;
+    font-size: 1.3rem;
+    line-height: 1.2;
+}
+
+.joker-tip-extra {
+    margin-top: 6px;
+    font-size: 1.1rem;
+    color: #ffd36b;
+}

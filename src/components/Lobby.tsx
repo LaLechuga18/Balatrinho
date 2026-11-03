@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { getSocket } from '../services/socketService';
 import type { NetworkPlayer } from '../types/multiplayerType';
+import { MenuBackground, MenuLogo } from './MenuDecor';
+import '@fontsource/jersey-10/400.css';
+
+// Pon esto en false cuando quieras quitar el botón de "Juego solitario" del lobby.
+const MOSTRAR_MODO_SOLITARIO = false;
 
 interface LobbyProps {
   onStartSolo: () => void;
   onStartMultiplayer: (roomCode: string, playerName: string, isHost: boolean, initialPlayers: NetworkPlayer[]) => void;
+  /** Vuelve al menú principal. */
+  onVolver?: () => void;
 }
 
-export function Lobby({ onStartSolo, onStartMultiplayer }: LobbyProps) {
+export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps) {
   const [vista, setVista] = useState<'inicio' | 'crear' | 'unirse' | 'sala_espera'>('inicio');
   const [nombre, setNombre] = useState<string>('');
   const [codigoSalaInput, setCodigoSalaInput] = useState<string>('');
@@ -103,149 +110,157 @@ export function Lobby({ onStartSolo, onStartMultiplayer }: LobbyProps) {
   };
 
   return (
-    <div className="lobby-overlay">
-      <div className="lobby-modal">
+    <div className="menu-screen menu-screen--scroll">
+      <MenuBackground />
 
-        <div className="lobby-header">
-          <h1 className="lobby-titulo">🃏 BALATRINHO</h1>
-          <p className="lobby-subtitulo">Roguelike Poker LAN Edition</p>
-        </div>
+      <main className="menu-content menu-content--compacto">
+        <MenuLogo chico />
 
-        {errorMsg && <div className="lobby-error">{errorMsg}</div>}
+        <div className="menu-panel">
+          {errorMsg && <div className="menu-error">{errorMsg}</div>}
 
-        {/* ─── VISTA: MENÚ PRINCIPAL ─── */}
-        {vista === 'inicio' && (
-          <div className="lobby-menu-opciones">
-            <button className="btn-lobby btn-solo" onClick={onStartSolo}>
-              👤 Modo Solitario
-            </button>
-            <div className="lobby-divisor"><span>O JUGAR EN RED LOCAL</span></div>
-            <button className="btn-lobby btn-crear" onClick={() => { setErrorMsg(''); setVista('crear'); }}>
-              👑 Crear Sala (Host)
-            </button>
-            <button className="btn-lobby btn-unirse" onClick={() => { setErrorMsg(''); setVista('unirse'); }}>
-              👥 Unirse a Sala
-            </button>
-          </div>
-        )}
-
-        {/* ─── VISTA: CREAR SALA ─── */}
-        {vista === 'crear' && (
-          <form className="lobby-form" onSubmit={handleCrearSala}>
-            <label className="lobby-label">Tu Nombre:</label>
-            <input
-              type="text"
-              className="lobby-input"
-              placeholder="Ej: Jugador 1"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              maxLength={15}
-              autoFocus
-            />
-            <div className="lobby-form-botones">
-              <button type="button" className="btn-lobby btn-volver" onClick={() => setVista('inicio')}>
-                ⬅ Volver
+          {/* ─── VISTA: CREAR O UNIRSE ─── */}
+          {vista === 'inicio' && (
+            <div className="menu-opciones">
+              <h2 className="menu-panel-titulo">JUEGO EN LAN</h2>
+              <button
+                className="menu-button menu-button--blue"
+                onClick={() => { setErrorMsg(''); setVista('crear'); }}
+              >
+                CREAR SALA
               </button>
-              <button type="submit" className="btn-lobby btn-crear">
-                Crear Sala
+              <button
+                className="menu-button menu-button--gold"
+                onClick={() => { setErrorMsg(''); setVista('unirse'); }}
+              >
+                UNIRSE A SALA
               </button>
+              {MOSTRAR_MODO_SOLITARIO && (
+                <button className="menu-button menu-button--oscuro" onClick={onStartSolo}>
+                  JUEGO SOLITARIO
+                </button>
+              )}
+              {onVolver && (
+                <button className="menu-button menu-button--oscuro" onClick={onVolver}>
+                  ← VOLVER AL MENÚ
+                </button>
+              )}
             </div>
-          </form>
-        )}
+          )}
 
-        {/* ─── VISTA: UNIRSE A SALA ─── */}
-        {vista === 'unirse' && (
-          <form className="lobby-form" onSubmit={handleUnirseSala}>
-            <label className="lobby-label">Tu Nombre:</label>
-            <input
-              type="text"
-              className="lobby-input"
-              placeholder="Ej: Jugador 2"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              maxLength={15}
-            />
-            <label className="lobby-label">Código de Sala (4 letras):</label>
-            <input
-              type="text"
-              className="lobby-input input-codigo"
-              placeholder="CÓDIGO"
-              value={codigoSalaInput}
-              onChange={(e) => setCodigoSalaInput(e.target.value.toUpperCase())}
-              maxLength={4}
-              autoFocus
-            />
-            <div className="lobby-form-botones">
-              <button type="button" className="btn-lobby btn-volver" onClick={() => setVista('inicio')}>
-                ⬅ Volver
-              </button>
-              <button type="submit" className="btn-lobby btn-unirse">
-                Unirse
-              </button>
-            </div>
-          </form>
-        )}
+          {/* ─── VISTA: CREAR SALA ─── */}
+          {vista === 'crear' && (
+            <form className="menu-form" onSubmit={handleCrearSala}>
+              <h2 className="menu-panel-titulo">CREAR SALA</h2>
+              <label className="menu-label">Tu nombre</label>
+              <input
+                type="text"
+                className="menu-input"
+                placeholder="Ej: Jugador 1"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                maxLength={15}
+                autoFocus
+              />
+              <div className="menu-botones-fila">
+                <button type="button" className="menu-button menu-button--oscuro" onClick={() => setVista('inicio')}>
+                  ← VOLVER
+                </button>
+                <button type="submit" className="menu-button menu-button--blue">
+                  CREAR
+                </button>
+              </div>
+            </form>
+          )}
 
-        {/* ─── VISTA: SALA DE ESPERA ─── */}
-        {vista === 'sala_espera' && (
-          <div className="lobby-sala-espera">
-            <div className="codigo-box">
-              <span className="codigo-label">CÓDIGO DE SALA:</span>
-              <span className="codigo-valor">{codigoSalaActual}</span>
-              <button type="button" className="btn-copiar" onClick={copiarCodigo}>
-                {copiado ? '✓ ¡Copiado!' : '📋 Copiar'}
-              </button>
-            </div>
-            <p className="sala-instruccion">
-              Comparte este código con tus amigos en la misma red local Wi-Fi.
-            </p>
+          {/* ─── VISTA: UNIRSE A SALA ─── */}
+          {vista === 'unirse' && (
+            <form className="menu-form" onSubmit={handleUnirseSala}>
+              <h2 className="menu-panel-titulo">UNIRSE A SALA</h2>
+              <label className="menu-label">Tu nombre</label>
+              <input
+                type="text"
+                className="menu-input"
+                placeholder="Ej: Jugador 2"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                maxLength={15}
+              />
+              <label className="menu-label">Código de sala (4 letras)</label>
+              <input
+                type="text"
+                className="menu-input menu-input--codigo"
+                placeholder="CÓDIGO"
+                value={codigoSalaInput}
+                onChange={(e) => setCodigoSalaInput(e.target.value.toUpperCase())}
+                maxLength={4}
+                autoFocus
+              />
+              <div className="menu-botones-fila">
+                <button type="button" className="menu-button menu-button--oscuro" onClick={() => setVista('inicio')}>
+                  ← VOLVER
+                </button>
+                <button type="submit" className="menu-button menu-button--gold">
+                  UNIRSE
+                </button>
+              </div>
+            </form>
+          )}
 
-            <div className="jugadores-lista">
-              <h4 className="jugadores-titulo">
-                Jugadores conectados ({jugadoresEnSala.length}/4):
-              </h4>
-              <div className="jugadores-cards">
+          {/* ─── VISTA: SALA DE ESPERA ─── */}
+          {vista === 'sala_espera' && (
+            <div className="menu-form">
+              <div className="menu-codigo-caja">
+                <span className="menu-codigo-etiqueta">CÓDIGO DE SALA</span>
+                <span className="menu-codigo-valor">{codigoSalaActual}</span>
+                <button type="button" className="menu-btn-copiar" onClick={copiarCodigo}>
+                  {copiado ? '✓ ¡Copiado!' : '📋 Copiar'}
+                </button>
+              </div>
+              <p className="menu-ayuda">
+                Comparte este código con tus amigos en la misma red local Wi-Fi.
+              </p>
+
+              <div className="menu-jugadores">
+                <h4 className="menu-jugadores-titulo">
+                  JUGADORES CONECTADOS ({jugadoresEnSala.length}/4)
+                </h4>
                 {jugadoresEnSala.map((p) => (
-                  <div key={p.id} className="jugador-item">
-                    <span className="jugador-item-icono">{p.isHost ? '👑' : '👤'}</span>
-                    <span className="jugador-item-nombre">{p.name}</span>
-                    {p.isHost && <span className="jugador-badge-host">Host</span>}
+                  <div key={p.id} className="menu-jugador">
+                    <span>{p.isHost ? '👑' : '👤'}</span>
+                    <span>{p.name}</span>
+                    {p.isHost && <span className="menu-jugador-host">HOST</span>}
                   </div>
                 ))}
               </div>
-            </div>
 
-            <div className="lobby-acciones-sala">
-              <button
-                type="button"
-                className="btn-lobby btn-volver"
-                onClick={() => {
-                  const socket = getSocket();
-                  socket.emit('leave_room');
-                  setVista('inicio');
-                }}
-              >
-                Salir de la Sala
-              </button>
-
-              {esHost ? (
+              <div className="menu-botones-fila">
                 <button
                   type="button"
-                  className="btn-lobby btn-iniciar"
-                  onClick={handleIniciarPartida}
+                  className="menu-button menu-button--oscuro"
+                  onClick={() => {
+                    const socket = getSocket();
+                    socket.emit('leave_room');
+                    setVista('inicio');
+                  }}
                 >
-                  🚀 INICIAR PARTIDA
+                  SALIR
                 </button>
-              ) : (
-                <div className="esperando-host">
-                  ⏳ Esperando que el anfitrión inicie la partida...
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-      </div>
+                {esHost ? (
+                  <button type="button" className="menu-button menu-button--verde" onClick={handleIniciarPartida}>
+                    INICIAR PARTIDA
+                  </button>
+                ) : (
+                  <div className="menu-esperando">
+                    ⏳ Esperando que el anfitrión inicie la partida...
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

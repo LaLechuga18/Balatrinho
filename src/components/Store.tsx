@@ -1,5 +1,8 @@
 import type { Comodin } from '../logic/jokers';
 import { ComodinImagen } from './JokersImage';
+import { JokerTip } from './JokerTip';
+import '@fontsource/jersey-10/400.css';
+import './Store.css';
 
 interface TiendaProps {
   oferta: Comodin[];
@@ -28,73 +31,101 @@ export function Tienda({
   const puedeReroll = monedas >= costoReroll && !esperandoSiguienteRonda;
 
   return (
-    <div className="tienda-overlay">
-      <div className="tienda-modal">
+    <div className="shop-overlay">
+      <div className="shop-panel">
 
-        {/* Encabezado */}
-        <h2 className="tienda-titulo">TIENDA DE COMODINES</h2>
-        <div className="tienda-info">
-          <span className="tienda-monedas">🪙 {monedas} monedas</span>
-          <span className="tienda-slots">
-            Comodines: {comodinesEquipados.length} / {maxComodines}
-          </span>
+        {/* Encabezado: título y monedas */}
+        <div className="shop-encabezado">
+          <h2 className="shop-titulo">TIENDA DE COMODINES</h2>
+          <div className="shop-monedas">🪙 {monedas}</div>
         </div>
 
-        {/* Oferta */}
-        {oferta.length === 0 ? (
-          <p className="tienda-vacia">No hay comodines nuevos disponibles.</p>
-        ) : (
-          <div className="tienda-oferta">
-            {oferta.map((comodin) => {
-              const yaEquipado = comodinesEquipados.some((c) => c.id === comodin.id);
-              const puedeComprar =
-                !esperandoSiguienteRonda &&
-                !yaEquipado &&
-                !slotsLlenos &&
-                monedas >= comodin.costo;
+        <div className="shop-cuerpo">
 
-              return (
-                <div
-                  key={comodin.id}
-                  className={`tienda-carta${yaEquipado ? ' tienda-carta-equipada' : ''}`}
-                >
-                  <div className="tienda-carta-imagen">
-                    <ComodinImagen comodin={comodin} ancho={96} alto={134} />
-                  </div>
-                  <h4 className="tienda-carta-nombre">{comodin.nombre}</h4>
-                  <p className="tienda-carta-desc">{comodin.descripcion}</p>
-                  <p className="tienda-carta-costo">🪙 {comodin.costo}</p>
-                  <button
-                    onClick={() => onComprar(comodin)}
-                    disabled={!puedeComprar}
-                    className={`tienda-btn-comprar${puedeComprar ? '' : ' disabled'}`}
-                  >
-                    {yaEquipado ? 'EQUIPADO' : slotsLlenos ? 'SIN ESPACIO' : 'COMPRAR'}
-                  </button>
+          {/* Columna de acciones: siguiente ronda arriba, reroll abajo */}
+          <div className="shop-acciones">
+            <button
+              className="shop-btn shop-btn--roja"
+              onClick={onContinuar}
+              disabled={esperandoSiguienteRonda}
+            >
+              {esperandoSiguienteRonda ? (
+                <>ESPERANDO<br />OPONENTES...</>
+              ) : (
+                <>SIGUIENTE<br />RONDA</>
+              )}
+            </button>
+
+            <button
+              className="shop-btn shop-btn--verde"
+              onClick={onReroll}
+              disabled={!puedeReroll}
+              title={puedeReroll ? 'Ver otros comodines' : 'No tienes monedas suficientes'}
+            >
+              <span>REROLL</span>
+              <span className="shop-btn-precio">🪙 {costoReroll}</span>
+            </button>
+          </div>
+
+          {/* Vitrina: comodines en venta */}
+          <div className="shop-vitrina">
+            <div className="shop-vitrina-titulo">En venta</div>
+
+            {oferta.length === 0 ? (
+              <p className="shop-vacia">No hay comodines nuevos disponibles.</p>
+            ) : (
+              <div className="shop-oferta">
+                {oferta.map((comodin) => {
+                  const yaEquipado = comodinesEquipados.some((c) => c.id === comodin.id);
+                  const sinMonedas = monedas < comodin.costo;
+                  const puedeComprar =
+                    !esperandoSiguienteRonda && !yaEquipado && !slotsLlenos && !sinMonedas;
+
+                  return (
+                    <div
+                      key={comodin.id}
+                      className={`shop-carta joker-tip-anclaje${yaEquipado ? ' shop-carta--equipada' : ''}`}
+                    >
+                      <div className="shop-precio">🪙 {comodin.costo}</div>
+                      <div className="shop-joker">
+                        <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
+                      </div>
+                      <span className="shop-carta-nombre">{comodin.nombre}</span>
+                      <button
+                        className="shop-btn-comprar"
+                        onClick={() => onComprar(comodin)}
+                        disabled={!puedeComprar}
+                      >
+                        {yaEquipado ? 'EQUIPADO' : slotsLlenos ? 'SIN ESPACIO' : sinMonedas ? 'SIN MONEDAS' : 'COMPRAR'}
+                      </button>
+                      <JokerTip comodin={comodin} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tus comodines equipados (pasa el mouse para ver qué hacen) */}
+        <div className="shop-tuyos">
+          <div className="shop-vitrina-titulo">
+            Tus comodines {comodinesEquipados.length}/{maxComodines}
+          </div>
+          <div className="shop-tuyos-fila">
+            {Array.from({ length: maxComodines }).map((_, index) => {
+              const comodin = comodinesEquipados[index];
+
+              return comodin ? (
+                <div key={comodin.id} className="shop-mini joker-tip-anclaje">
+                  <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
+                  <JokerTip comodin={comodin} lado="arriba" />
                 </div>
+              ) : (
+                <div key={`vacio-${index}`} className="shop-mini shop-mini--vacio">Vacío</div>
               );
             })}
           </div>
-        )}
-
-        {/* Acciones inferiores */}
-        <div className="tienda-acciones">
-          <button
-            className={`tienda-btn-reroll${puedeReroll ? '' : ' disabled'}`}
-            onClick={onReroll}
-            disabled={!puedeReroll}
-            title={puedeReroll ? 'Ver otros comodines' : 'No tienes monedas suficientes'}
-          >
-            🎲 Re-roll  <span className="reroll-costo">🪙 {costoReroll}</span>
-          </button>
-
-          <button
-            className={`tienda-btn-continuar${esperandoSiguienteRonda ? ' disabled' : ''}`}
-            onClick={onContinuar}
-            disabled={esperandoSiguienteRonda}
-          >
-            {esperandoSiguienteRonda ? '⏳ ESPERANDO OPONENTES...' : 'CONTINUAR ▶'}
-          </button>
         </div>
 
       </div>

@@ -255,3 +255,126 @@
         animation: none;
     }
 }
+
+
+/* ===== LOBBY (crear sala / unirse a sala): usa el mismo fondo y logo del menú ===== */
+.menu-screen--scroll { overflow-y: auto; align-items: flex-start; }
+.menu-screen--scroll .menu-content { margin: auto; }
+.menu-content--compacto { gap: clamp(14px, 3vh, 30px); }
+.menu-logo--chico { font-size: clamp(1.8rem, 6vw, 4rem); }
+
+/* Capa fija que recorta las manchas del fondo: evita que agranden el área de scroll */
+.menu-fondo { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+
+.menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(92vw, 480px);
+  box-sizing: border-box;
+  padding: 18px;
+  background: #27363d;
+  border: 4px solid #1b262c;
+  border-radius: 14px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+}
+.menu-panel-titulo {
+  margin: 0;
+  text-align: center;
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+  color: #f4f0e6;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.menu-opciones, .menu-form { display: flex; flex-direction: column; gap: 12px; }
+.menu-opciones .menu-button { min-width: 0; width: 100%; }
+.menu-botones-fila { display: flex; gap: 12px; align-items: stretch; }
+.menu-botones-fila .menu-button { min-width: 0; flex: 1; }
+
+.menu-button--oscuro { background: #3b4c54; box-shadow: 0 6px 0 #1f2b31; }
+.menu-button--verde { background: #1fa05a; box-shadow: 0 6px 0 #146b3a; }
+
+/* Texto y números del lobby: Jersey 10, porque en Pixelify Sans el 5 se confunde con la S */
+.menu-error,
+.menu-label,
+.menu-input,
+.menu-codigo-etiqueta,
+.menu-codigo-valor,
+.menu-btn-copiar,
+.menu-ayuda,
+.menu-jugadores-titulo,
+.menu-jugador,
+.menu-esperando { font-family: 'Jersey 10', 'Courier New', monospace; font-weight: 400; }
+
+.menu-error {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 1.3rem;
+  background: #8f1119;
+  border: 2px solid #5f0a11;
+  border-radius: 8px;
+}
+
+.menu-label { font-size: 1.25rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+.menu-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 1.8rem;
+  color: #f4f0e6;
+  background: #0f1a1f;
+  border: 3px solid #1b262c;
+  border-radius: 8px;
+  outline: none;
+}
+.menu-input:focus { border-color: #0b8cf0; }
+.menu-input::placeholder { color: rgba(244, 240, 230, 0.3); }
+.menu-input--codigo { text-align: center; font-size: 2.6rem; letter-spacing: 0.35em; text-transform: uppercase; }
+
+/* Sala de espera */
+.menu-codigo-caja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  background: #0f1a1f;
+  border-radius: 10px;
+}
+.menu-codigo-etiqueta { font-size: 1.2rem; letter-spacing: 0.14em; opacity: 0.65; }
+.menu-codigo-valor { padding-left: 0.3em; font-size: 3.8rem; line-height: 1.1; letter-spacing: 0.3em; color: #ffd36b; }
+.menu-btn-copiar {
+  padding: 3px 14px 4px;
+  font-size: 1.2rem;
+  color: #fff;
+  background: #c99a1c;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0 3px 0 #7e6112;
+  cursor: pointer;
+}
+.menu-btn-copiar:hover { filter: brightness(1.1); }
+.menu-ayuda { margin: 0; text-align: center; font-size: 1.3rem; opacity: 0.7; }
+
+.menu-jugadores { display: flex; flex-direction: column; gap: 6px; }
+.menu-jugadores-titulo { margin: 0; font-size: 1.25rem; letter-spacing: 0.1em; opacity: 0.75; }
+.menu-jugador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 1.6rem;
+  background: #0f1a1f;
+  border-radius: 8px;
+}
+.menu-jugador-host {
+  margin-left: auto;
+  padding: 0 8px;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  color: #2a1f00;
+  background: #e3b341;
+  border-radius: 6px;
+}
+.menu-esperando { flex: 1; align-self: center; text-align: center; font-size: 1.3rem; opacity: 0.8; }

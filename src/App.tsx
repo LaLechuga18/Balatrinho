@@ -6,6 +6,7 @@ import { PantallaFin } from './components/PantallaFin';
 import { Tienda } from './components/Store';
 import { Lobby } from './components/Lobby';
 import { evaluarMano } from './logic/HandEvaluator';
+import { JokerTip } from './components/JokerTip';
 import type { GameMode, NetworkPlayer } from './types/multiplayerType';
 import {
   useGameState,
@@ -176,6 +177,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
       <Lobby
         onStartSolo={handleStartSolo}
         onStartMultiplayer={handleStartMultiplayer}
+        onVolver={onVolverAlMenu}
       />
     );
   }
@@ -346,10 +348,9 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
               const valorVenta = Math.floor(comodin.costo * PORCENTAJE_VENTA);
 
               return (
-                <div key={comodin.id} className="mesa-slot">
+                <div key={comodin.id} className="mesa-slot joker-tip-anclaje">
                   <div
                     className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}`}
-                    title={`${comodin.nombre}: ${comodin.descripcion} (clic para vender)`}
                     onClick={() => toggleSeleccionVenta(comodin.id)}
                   >
                     <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
@@ -361,6 +362,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
                   ) : (
                     <span className="mesa-joker-nombre">{comodin.nombre}</span>
                   )}
+                  <JokerTip comodin={comodin} extra={`Clic para vender · 🪙 ${valorVenta}`} />
                 </div>
               );
             })}

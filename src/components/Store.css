@@ -1,0 +1,271 @@
+/* ===== TIENDA DE COMODINES ===== */
+.shop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    color: #f4f0e6;
+    background: rgba(0, 0, 0, 0.72);
+    font-family: 'Jersey 10', 'Courier New', monospace;
+    font-synthesis: none;
+}
+
+.shop-panel {
+    /* Tamaño del comodín: se adapta al alto de la pantalla (proporción 64:90) */
+    --shop-joker-w: clamp(70px, 12vh, 128px);
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(94vw, 860px);
+    box-sizing: border-box;
+    padding: 14px;
+    background: #27363d;
+    border: 4px solid #1b262c;
+    border-radius: 14px;
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ----- Encabezado ----- */
+.shop-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #a5121d;
+    border: 3px solid #5f0a11;
+    border-radius: 10px;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.shop-titulo {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+}
+
+.shop-monedas {
+    padding: 0 12px 3px;
+    font-size: 2rem;
+    color: #ffd36b;
+    background: #0f1a1f;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- Cuerpo: acciones a la izquierda, vitrina a la derecha ----- */
+.shop-cuerpo {
+    display: grid;
+    grid-template-columns: clamp(130px, 22%, 190px) 1fr;
+    gap: 12px;
+}
+
+.shop-acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shop-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 8px 12px;
+    font-family: inherit;
+    font-size: 1.8rem;
+    line-height: 1.05;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.08s, filter 0.15s, box-shadow 0.08s;
+}
+
+.shop-btn--roja {
+    background: #e0242e;
+    box-shadow: 0 6px 0 #8f1119;
+}
+
+.shop-btn--verde {
+    background: #1fa05a;
+    box-shadow: 0 6px 0 #146b3a;
+}
+
+.shop-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.shop-btn:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.shop-btn:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+}
+
+.shop-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.7) brightness(0.65);
+}
+
+.shop-btn-precio {
+    font-size: 2rem;
+    color: #ffe9a8;
+}
+
+/* ----- Vitrina ----- */
+.shop-vitrina {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    background: #0f1a1f;
+    border-radius: 10px;
+}
+
+.shop-vitrina-titulo {
+    font-size: 1.15rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+.shop-vacia {
+    margin: 0;
+    padding: 20px 0;
+    text-align: center;
+    font-size: 1.4rem;
+    opacity: 0.6;
+}
+
+.shop-oferta {
+    display: flex;
+    justify-content: center;
+    gap: clamp(10px, 2.4vw, 26px);
+}
+
+.shop-carta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.shop-carta--equipada {
+    opacity: 0.45;
+}
+
+/* Etiqueta de precio sobre cada comodín */
+.shop-precio {
+    padding: 0 10px 2px;
+    font-size: 1.6rem;
+    color: #ffd36b;
+    background: #27363d;
+    border: 2px solid #c99a1c;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-joker {
+    width: var(--shop-joker-w);
+    height: calc(var(--shop-joker-w) * 90 / 64);
+    transition: transform 0.15s;
+}
+
+.shop-carta:not(.shop-carta--equipada):hover .shop-joker {
+    transform: translateY(-5px) rotate(-2deg);
+}
+
+.shop-carta-nombre {
+    max-width: calc(var(--shop-joker-w) * 1.4);
+    font-size: 1.2rem;
+    line-height: 1.1;
+    text-align: center;
+}
+
+.shop-btn-comprar {
+    min-width: var(--shop-joker-w);
+    padding: 3px 12px 5px;
+    font-family: inherit;
+    font-size: 1.35rem;
+    color: #fff;
+    background: #0b8cf0;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 0 #0a58a6;
+    cursor: pointer;
+    transition: transform 0.08s, filter 0.15s;
+}
+
+.shop-btn-comprar:hover:not(:disabled) {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+}
+
+.shop-btn-comprar:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.shop-btn-comprar:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.7) brightness(0.65);
+}
+
+/* ----- Tus comodines (fila inferior) ----- */
+.shop-tuyos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px 12px;
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 10px;
+}
+
+.shop-tuyos-fila {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+}
+
+.shop-mini {
+    --shop-mini-w: clamp(40px, 7vh, 64px);
+    width: var(--shop-mini-w);
+    height: calc(var(--shop-mini-w) * 90 / 64);
+}
+
+.shop-mini--vacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border: 2px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    opacity: 0.6;
+}
+
+/* Pantallas angostas: una sola columna */
+@media (max-width: 600px) {
+    .shop-cuerpo {
+        grid-template-columns: 1fr;
+    }
+
+    .shop-acciones {
+        flex-direction: row;
+    }
+}
