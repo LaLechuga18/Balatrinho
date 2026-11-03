@@ -129,7 +129,7 @@ export function evaluarMano(
   );
 
   // Efectos de los comodines equipados, calculados sobre las cartas que puntúan
-  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables);
+  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables, tipo);
 
   const fichasTotales = info.fichasBase + fichasCartas + efectoComodines.fichasExtra;
   const multFinal = info.multBase + efectoComodines.multExtra;

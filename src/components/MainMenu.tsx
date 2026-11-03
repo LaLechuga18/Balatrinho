@@ -6,9 +6,10 @@ const GAME_VERSION = '0.1.0-dev';
 
 interface MainMenuProps {
     onPlayLocal: () => void;
+    onPlayLan: () => void;
 }
 
-export function MainMenu({ onPlayLocal }: MainMenuProps) {
+export function MainMenu({ onPlayLocal, onPlayLan }: MainMenuProps) {
     return (
         <div className="menu-screen">
             {/* Fondo animado: manchas de color que se desplazan lentamente (ver MainMenu.css) */}
@@ -35,9 +36,8 @@ export function MainMenu({ onPlayLocal }: MainMenuProps) {
                         JUEGO ONLINE
                         <small>Próximamente</small>
                     </button>
-                    <button className="menu-button menu-button--gold" disabled>
+                    <button className="menu-button menu-button--gold" onClick={onPlayLan}>
                         JUEGO EN LAN
-                        <small>Próximamente</small>
                     </button>
                 </nav>
             </main>

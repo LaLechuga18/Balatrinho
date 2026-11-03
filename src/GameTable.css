@@ -484,3 +484,92 @@
         font-size: 1.95rem;
     }
 }
+
+
+/* ===== AGREGADOS PARA EL MODO EN RED (oponentes, venta de comodines, salir) =====
+   Van al final del archivo a propósito: así tienen prioridad sobre las reglas anteriores. */
+
+.mesa-tablero {
+    position: relative;
+}
+
+/* Código de sala debajo del banner de ronda */
+.mesa-ronda-sala {
+    margin-top: 2px;
+    font-size: 1.04rem;
+    letter-spacing: 0.12em;
+    color: #ffd36b;
+}
+
+/* Lista de jugadores: en pantallas bajas se sigue viendo (antes se ocultaba) */
+@media (max-height: 680px) {
+    .mesa-jugadores {
+        display: flex;
+    }
+}
+
+.mesa-jugador--oponente {
+    color: #f4f0e6;
+}
+
+.mesa-jugador--eliminado {
+    opacity: 0.35;
+    text-decoration: line-through;
+}
+
+.mesa-jugador-pts {
+    margin-left: auto;
+    color: #ffd36b;
+    font-variant-numeric: tabular-nums;
+}
+
+.mesa-jugador-listo {
+    color: #7be3b4;
+}
+
+/* Venta de comodines: clic en el comodín y aparece el botón "Vender" */
+.mesa-joker--lleno {
+    cursor: pointer;
+}
+
+.mesa-joker--seleccionado {
+    transform: translateY(-6px);
+    filter: drop-shadow(0 0 6px #ffd36b);
+}
+
+.mesa-btn-vender {
+    padding: 2px 8px 3px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #fff;
+    background: #e0242e;
+    border: none;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #8f1119;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mesa-btn-vender:hover {
+    filter: brightness(1.12);
+}
+
+/* Botón para salir de la partida (esquina superior derecha del tablero) */
+.mesa-btn-salir {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 6px 14px 8px;
+    font-family: inherit;
+    font-size: 1.1rem;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.mesa-btn-salir:hover {
+    background: rgba(0, 0, 0, 0.55);
+}

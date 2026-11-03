@@ -4,37 +4,30 @@ import { ComodinImagen } from './components/JokersImage';
 import { MazoContador } from './components/MazoContador';
 import { PantallaFin } from './components/PantallaFin';
 import { Tienda } from './components/Store';
+import { Lobby } from './components/Lobby';
 import { evaluarMano } from './logic/HandEvaluator';
+import type { GameMode, NetworkPlayer } from './types/multiplayerType';
 import {
   useGameState,
   MAX_SELECCION,
-  MAX_DESCARTES_POR_RONDA,
-  MAX_MANOS_POR_RONDA,
   MAX_RONDAS,
   MAX_COMODINES,
-  COMODINES_EN_OFERTA,
   VIDAS_INICIALES,
+  COSTO_REROLL,
+  PORCENTAJE_VENTA,
 } from './hooks/useGameState';
 import './App.css';
 import '@fontsource/jersey-10/400.css';
 import './GameTable.css';
-
-// Re-exportamos para que el comentario siga documentando los límites del mazo
-// CARTAS_POR_RONDA(8) + MAX_MANOS*MAX_SELECCION(20) + MAX_DESCARTES*MAX_SELECCION(15) = 43 ≤ 52 ✓
-void MAX_DESCARTES_POR_RONDA;
-void MAX_MANOS_POR_RONDA;
-void COMODINES_EN_OFERTA;
-void VIDAS_INICIALES;
 
 // Orden de palos para el modo "ordenar por palo" (Espadas → Corazones → Diamantes → Tréboles)
 const ORDEN_PALOS: Record<string, number> = { Espadas: 0, Corazones: 1, Diamantes: 2, Treboles: 3 };
 
 type OrdenMano = 'original' | 'valor' | 'palo';
 
-// estado: 'lleno' | 'medio' | 'vacio'
 function CorazonVida({ estado }: { estado: 'lleno' | 'medio' | 'vacio' }) {
-  if (estado === 'lleno')  return <span className="vida-llena">♥</span>;
-  if (estado === 'medio')  return <span className="vida-media">♡</span>;
+  if (estado === 'lleno') return <span className="vida-llena">♥</span>;
+  if (estado === 'medio') return <span className="vida-media">♡</span>;
   return <span className="vida-vacia">♡</span>;
 }
 
@@ -44,14 +37,33 @@ function CorazonVida({ estado }: { estado: 'lleno' | 'medio' | 'vacio' }) {
  */
 function estadosCorazones(vidasCorazones: number, total: number): Array<'lleno' | 'medio' | 'vacio'> {
   return Array.from({ length: total }, (_, i) => {
-    const umbral = i + 1;          // corazón i+1 se llena cuando vidasCorazones >= umbral
-    if (vidasCorazones >= umbral)  return 'lleno';
+    const umbral = i + 1;
+    if (vidasCorazones >= umbral) return 'lleno';
     if (vidasCorazones >= umbral - 0.5) return 'medio';
     return 'vacio';
   });
 }
 
-function App() {
+interface AppProps {
+  /** Pantalla con la que arranca: 'solo' (juego local) o 'lobby' (crear / unirse a una sala en red). */
+  modoInicial?: GameMode;
+  /** Se llama al pulsar "Menú" o al terminar la partida, para volver al menú principal. */
+  onVolverAlMenu?: () => void;
+}
+
+function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
+  const [modoJuego, setModoJuego] = useState<GameMode>(modoInicial);
+  const [codigoSala, setCodigoSala] = useState<string>('');
+  const [miNombre, setMiNombre] = useState<string>('TÚ');
+  const [esHost, setEsHost] = useState<boolean>(false);
+
+  const gameState = useGameState({
+    modo: modoJuego === 'multiplayer' ? 'multiplayer' : 'solo',
+    codigoSala,
+    nombreJugador: miNombre,
+    esHost,
+  });
+
   const {
     mano,
     cartasEnMazo,
@@ -70,15 +82,32 @@ function App() {
     mostrarFinPartida,
     juegoTerminado,
     derrota,
+    oponentes,
+    esperandoOponentes,
+    esperandoSiguienteRonda,
+    resultadosTablaFin,
     alternarSeleccion,
     descartarCartas,
     confirmarMano,
     comprarComodin,
+    venderComodin,
     continuarTrasTienda,
+    rerollTienda,
     reiniciarJuego,
-  } = useGameState();
+    setOponentes,
+  } = gameState;
 
   const [ordenMano, setOrdenMano] = useState<OrdenMano>('original');
+  // ID del comodín seleccionado para vender (null = ninguno)
+  const [comodinSeleccionadoId, setComodinSeleccionadoId] = useState<string | null>(null);
+
+  const toggleSeleccionVenta = (id: string) =>
+    setComodinSeleccionadoId(prev => (prev === id ? null : id));
+
+  const confirmarVenta = (id: string) => {
+    venderComodin(id);
+    setComodinSeleccionadoId(null);
+  };
 
   // Orden visual de la mano — no muta el estado del hook, solo reordena para el render
   const manoOrdenada = useMemo(() => {
@@ -94,14 +123,10 @@ function App() {
   const cartasSeleccionadas = mano.filter(c => c.seleccionada);
   const cartasSeleccionadasCount = cartasSeleccionadas.length;
 
-  // Clave estable basada en los valores de las cartas seleccionadas.
-  // Usamos esta cadena como dependencia del useMemo para evitar recomputar en
-  // cada render si la selección no cambió.
+  // Clave estable basada en las cartas seleccionadas, para no recalcular el puntaje
+  // en cada render si la selección no cambió.
   const seleccionKey = cartasSeleccionadas.map(c => `${c.valor}${c.palo}`).join(',');
 
-  // evaluarMano es pura y determinista: con la misma seleccionKey y los mismos
-  // comodines siempre devuelve el mismo resultado, así que es seguro omitir
-  // 'cartasSeleccionadas' del array de dependencias.
   const resultadoScoring = useMemo(
     () => evaluarMano(cartasSeleccionadas, comodinesEquipados),
     [seleccionKey, comodinesEquipados] // eslint-disable-line react-hooks/exhaustive-deps
@@ -111,25 +136,77 @@ function App() {
     ? '💀 DERROTA'
     : juegoTerminado
     ? '🏁 JUEGO TERMINADO'
+    : esperandoOponentes
+    ? '⏳ ESPERANDO OPONENTES'
     : 'INTERCAMBIO';
 
   const hayJugada = cartasSeleccionadasCount > 0;
+  const esMultijugador = modoJuego === 'multiplayer';
+
+  const handleStartSolo = () => {
+    setMiNombre('TÚ');
+    setModoJuego('solo');
+  };
+
+  const handleStartMultiplayer = (
+    roomCode: string,
+    playerName: string,
+    hostStatus: boolean,
+    initialPlayers: NetworkPlayer[]
+  ) => {
+    setCodigoSala(roomCode);
+    setMiNombre(playerName || 'TÚ');
+    setEsHost(hostStatus);
+    setOponentes(initialPlayers.filter(p => p.name !== playerName));
+    setModoJuego('multiplayer');
+  };
+
+  // Sale de la partida: si hay menú principal vuelve a él; si no, regresa al lobby
+  const handleSalirAlMenu = () => {
+    reiniciarJuego();
+    if (onVolverAlMenu) {
+      onVolverAlMenu();
+    } else {
+      setModoJuego('lobby');
+    }
+  };
+
+  if (modoJuego === 'lobby') {
+    return (
+      <Lobby
+        onStartSolo={handleStartSolo}
+        onStartMultiplayer={handleStartMultiplayer}
+      />
+    );
+  }
 
   return (
     <div className="mesa">
 
+      {/* OVERLAY DE ESPERA DE OPONENTES AL TERMINAR MANOS */}
+      {esperandoOponentes && (
+        <div className="espera-overlay">
+          <div className="espera-modal">
+            <div className="espera-icono">⏳</div>
+            <h2 className="espera-titulo">¡Completaste tus manos de la ronda {rondaActual}!</h2>
+            <p className="espera-texto">Tu puntaje en esta ronda: <b>{puntajeRonda} pts</b></p>
+            <p className="espera-subtexto">
+              Esperando a que los demás jugadores terminen sus jugadas...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* PANTALLA DE FIN DE PARTIDA */}
       {mostrarFinPartida && (
         <PantallaFin
-          resultados={[
-            { nombre: 'TÚ', puntaje: puntajeTotal, eresTu: true },
-            // TODO multijugador: reemplazar con datos reales del servidor
-            { nombre: 'Jugador 2', puntaje: 0, eresTu: false },
-            { nombre: 'Jugador 3', puntaje: 0, eresTu: false },
-            { nombre: 'Jugador 4', puntaje: 0, eresTu: false },
-          ]}
+          resultados={
+            resultadosTablaFin.length > 0
+              ? resultadosTablaFin
+              : [{ nombre: miNombre, puntaje: puntajeTotal, eresTu: true }]
+          }
           onJugarOtraVez={reiniciarJuego}
-          onFinalizar={() => window.close()}
+          onFinalizar={handleSalirAlMenu}
         />
       )}
 
@@ -140,7 +217,10 @@ function App() {
           monedas={monedas}
           comodinesEquipados={comodinesEquipados}
           maxComodines={MAX_COMODINES}
+          costoReroll={COSTO_REROLL}
+          esperandoSiguienteRonda={esperandoSiguienteRonda}
           onComprar={comprarComodin}
+          onReroll={rerollTienda}
           onContinuar={continuarTrasTienda}
         />
       )}
@@ -150,6 +230,7 @@ function App() {
         <div className="mesa-ronda">
           <span className="mesa-ronda-titulo">RONDA {Math.min(rondaActual, MAX_RONDAS)}/{MAX_RONDAS}</span>
           <span className="mesa-ronda-fase">{faseLabel}</span>
+          {codigoSala && <span className="mesa-ronda-sala">Sala {codigoSala}</span>}
         </div>
 
         <div className="mesa-bloque">
@@ -190,18 +271,37 @@ function App() {
           </div>
         </div>
 
+        {/* JUGADORES: tú y, en partida en red, tus oponentes con sus vidas y puntaje */}
         <div className="mesa-bloque mesa-jugadores">
           <div className="mesa-jugador mesa-jugador--yo">
-            <span>TÚ</span>
+            <span>{miNombre}</span>
             <span className="jugador-vidas">
               {estadosCorazones(vidasCorazones, VIDAS_INICIALES).map((estado, i) => (
                 <CorazonVida key={i} estado={estado} />
               ))}
             </span>
+            {esMultijugador && <span className="mesa-jugador-pts">{puntajeRonda} pts</span>}
           </div>
-          <div className="mesa-jugador mesa-jugador--mock">Jugador 2 ♥♥ | 🪙 —</div>
-          <div className="mesa-jugador mesa-jugador--mock">Jugador 3 ♥♥♥ | 🪙 —</div>
-          <div className="mesa-jugador mesa-jugador--mock">Jugador 4 ♥ | 🪙 —</div>
+
+          {esMultijugador && oponentes.length > 0 ? (
+            oponentes.map((op) => (
+              <div
+                key={op.id}
+                className={`mesa-jugador mesa-jugador--oponente${!op.isAlive ? ' mesa-jugador--eliminado' : ''}`}
+              >
+                <span>{op.isHost && '👑 '}{op.name}</span>
+                <span className="oponente-vidas">
+                  {estadosCorazones(op.hp / 2, VIDAS_INICIALES).map((estado, i) => (
+                    <CorazonVida key={i} estado={estado} />
+                  ))}
+                </span>
+                <span className="mesa-jugador-pts">{op.currentRoundScore} pts</span>
+                {op.roundFinished && <span className="mesa-jugador-listo">✓</span>}
+              </div>
+            ))
+          ) : (
+            <div className="mesa-jugador mesa-jugador--mock">Modo solitario</div>
+          )}
         </div>
 
         <div className="mesa-bloque mesa-registro">
@@ -223,23 +323,44 @@ function App() {
 
       {/* ── TABLERO: comodines arriba, centro libre, acciones y mano abajo ── */}
       <main className="mesa-tablero">
+        <button className="mesa-btn-salir" onClick={handleSalirAlMenu} title="Salir al menú">
+          🏠 Menú
+        </button>
+
         <section className="mesa-comodines" aria-label="Comodines">
           <div className="mesa-seccion-titulo">COMODINES {comodinesEquipados.length}/{MAX_COMODINES}</div>
           <div className="mesa-comodines-fila">
             {Array.from({ length: MAX_COMODINES }).map((_, index) => {
               const comodin = comodinesEquipados[index];
 
-              return comodin ? (
+              if (!comodin) {
+                return (
+                  <div key={`vacio-${index}`} className="mesa-slot">
+                    <div className="mesa-joker mesa-joker--vacio">Vacío</div>
+                    <span className="mesa-joker-nombre">&nbsp;</span>
+                  </div>
+                );
+              }
+
+              const seleccionado = comodin.id === comodinSeleccionadoId;
+              const valorVenta = Math.floor(comodin.costo * PORCENTAJE_VENTA);
+
+              return (
                 <div key={comodin.id} className="mesa-slot">
-                  <div className="mesa-joker" title={`${comodin.nombre}: ${comodin.descripcion}`}>
+                  <div
+                    className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}`}
+                    title={`${comodin.nombre}: ${comodin.descripcion} (clic para vender)`}
+                    onClick={() => toggleSeleccionVenta(comodin.id)}
+                  >
                     <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
                   </div>
-                  <span className="mesa-joker-nombre">{comodin.nombre}</span>
-                </div>
-              ) : (
-                <div key={`vacio-${index}`} className="mesa-slot">
-                  <div className="mesa-joker mesa-joker--vacio">Vacío</div>
-                  <span className="mesa-joker-nombre">&nbsp;</span>
+                  {seleccionado ? (
+                    <button className="mesa-btn-vender" onClick={() => confirmarVenta(comodin.id)}>
+                      Vender 🪙 {valorVenta}
+                    </button>
+                  ) : (
+                    <span className="mesa-joker-nombre">{comodin.nombre}</span>
+                  )}
                 </div>
               );
             })}
@@ -248,7 +369,7 @@ function App() {
 
         {/* Centro: más adelante aquí aparecerán las cartas jugadas */}
         <section className="mesa-centro">
-          {juegoTerminado ? (
+          {juegoTerminado || esperandoOponentes ? (
             <p className="mesa-pista mesa-pista--fin">{faseLabel}</p>
           ) : (
             <p className="mesa-pista">Selecciona hasta {MAX_SELECCION} cartas para jugarlas o descartarlas</p>
@@ -258,7 +379,7 @@ function App() {
         <section className="mesa-acciones">
           <button
             onClick={confirmarMano}
-            disabled={juegoTerminado || manosRestantes === 0 || cartasSeleccionadasCount === 0}
+            disabled={juegoTerminado || manosRestantes === 0 || cartasSeleccionadasCount === 0 || esperandoOponentes}
             className="mesa-btn mesa-btn--azul"
           >
             JUGAR MANO
@@ -268,13 +389,13 @@ function App() {
             <span className="mesa-ordenar-label">ORDENAR</span>
             <button
               className={`mesa-btn-orden${ordenMano === 'valor' ? ' activo' : ''}`}
-              onClick={() => setOrdenMano(prev => prev === 'valor' ? 'original' : 'valor')}
+              onClick={() => setOrdenMano(prev => (prev === 'valor' ? 'original' : 'valor'))}
             >
               Valor
             </button>
             <button
               className={`mesa-btn-orden${ordenMano === 'palo' ? ' activo' : ''}`}
-              onClick={() => setOrdenMano(prev => prev === 'palo' ? 'original' : 'palo')}
+              onClick={() => setOrdenMano(prev => (prev === 'palo' ? 'original' : 'palo'))}
             >
               Palo
             </button>
@@ -282,7 +403,7 @@ function App() {
 
           <button
             onClick={descartarCartas}
-            disabled={juegoTerminado || descartesRestantes === 0 || cartasSeleccionadasCount === 0}
+            disabled={juegoTerminado || descartesRestantes === 0 || cartasSeleccionadasCount === 0 || esperandoOponentes}
             className="mesa-btn mesa-btn--roja"
           >
             DESCARTAR
@@ -292,7 +413,11 @@ function App() {
         <section className="mesa-mano-fila">
           <div className="mesa-cartas">
             {manoOrdenada.map((carta) => (
-              <Card key={`${carta.valor}-${carta.palo}`} data={carta} onClick={() => alternarSeleccion(mano.indexOf(carta))} />
+              <Card
+                key={`${carta.valor}-${carta.palo}`}
+                data={carta}
+                onClick={() => alternarSeleccion(mano.indexOf(carta))}
+              />
             ))}
           </div>
           <div className="mesa-mazo">

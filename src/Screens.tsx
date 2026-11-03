@@ -1,16 +1,29 @@
 import { useState } from 'react';
 import App from './App';
-import { MainMenu } from './components/MainMenu.tsx';
+import { MainMenu } from './components/MainMenu';
 
-type Screen = 'menu' | 'game';
+type Screen = 'menu' | 'local' | 'lan';
 
-// Decide qué pantalla se muestra. Por ahora: menú principal -> juego local.
+// Decide qué pantalla se muestra:
+//  - menú principal
+//  - juego local (un jugador)
+//  - juego en red local: abre el lobby para crear o unirse a una sala
 export default function Screens() {
     const [screen, setScreen] = useState<Screen>('menu');
+    const volverAlMenu = () => setScreen('menu');
 
-    if (screen === 'game') {
-        return <App />;
+    if (screen === 'local') {
+        return <App modoInicial="solo" onVolverAlMenu={volverAlMenu} />;
     }
 
-    return <MainMenu onPlayLocal={() => setScreen('game')} />;
+    if (screen === 'lan') {
+        return <App modoInicial="lobby" onVolverAlMenu={volverAlMenu} />;
+    }
+
+    return (
+        <MainMenu
+            onPlayLocal={() => setScreen('local')}
+            onPlayLan={() => setScreen('lan')}
+        />
+    );
 }
