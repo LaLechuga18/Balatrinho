@@ -207,6 +207,15 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
               ? resultadosTablaFin
               : [{ nombre: miNombre, puntaje: puntajeTotal, eresTu: true }]
           }
+          derrota={derrota}
+          rondasJugadas={Math.min(rondaActual, MAX_RONDAS)}
+          maxRondas={MAX_RONDAS}
+          monedas={monedas}
+          comodines={comodinesEquipados.length}
+          maxComodines={MAX_COMODINES}
+          vidas={vidasCorazones}
+          vidasMax={VIDAS_INICIALES}
+          codigoSala={codigoSala || undefined}
           onJugarOtraVez={reiniciarJuego}
           onFinalizar={handleSalirAlMenu}
         />

@@ -1,0 +1,238 @@
+/* ===== PANTALLA DE FIN DE PARTIDA ===== */
+.gameover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    color: #f4f0e6;
+    background: rgba(0, 0, 0, 0.78);
+    font-family: 'Jersey 10', 'Courier New', monospace;
+    font-synthesis: none;
+}
+
+.gameover-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(94vw, 580px);
+    margin: auto;
+    /* centrado; si no cabe en pantalla, se puede hacer scroll */
+    box-sizing: border-box;
+    padding: 16px;
+    background: #27363d;
+    border: 4px solid #1b262c;
+    border-radius: 14px;
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.45);
+    animation: gameover-aparece 0.35s ease-out both;
+}
+
+@keyframes gameover-aparece {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ----- Título (misma tipografía del logo del menú) ----- */
+.gameover-encabezado {
+    text-align: center;
+    padding: 6px 0 2px;
+}
+
+.gameover-titulo {
+    margin: 0;
+    font-family: 'Pixelify Sans', 'Courier New', monospace;
+    font-weight: 700;
+    font-size: clamp(1.9rem, 7vw, 3.2rem);
+    line-height: 1.05;
+    letter-spacing: 0.04em;
+    color: var(--tono, #f4f0e6);
+    -webkit-text-stroke: 0.1em #1b2a35;
+    paint-order: stroke fill;
+    text-shadow:
+        0 0.05em 0 #1b2a35,
+        0 0.09em 0 rgba(0, 0, 0, 0.4);
+}
+
+.gameover-titulo--victoria {
+    --tono: #ffd36b;
+}
+
+.gameover-titulo--derrota {
+    --tono: #ff6b73;
+}
+
+.gameover-titulo--neutro {
+    --tono: #f4f0e6;
+}
+
+.gameover-subtitulo {
+    margin: 8px 0 0;
+    font-size: 1.6rem;
+    opacity: 0.85;
+}
+
+/* ----- Bloques de filas (etiqueta + valor) ----- */
+.gameover-bloque {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px 12px;
+    background: #0f1a1f;
+    border-radius: 10px;
+}
+
+.gameover-seccion-titulo {
+    font-size: 1.15rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+.gameover-fila {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+}
+
+.gameover-etiqueta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 3px 10px 4px;
+    font-size: 1.5rem;
+    background: #3b4c54;
+    border-radius: 8px;
+}
+
+.gameover-valor {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 4.2ch;
+    padding: 3px 12px 4px;
+    font-size: 1.7rem;
+    color: #ffd36b;
+    background: #162229;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.gameover-fila--yo .gameover-etiqueta {
+    background: #0b8cf0;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.gameover-pos {
+    min-width: 1.6em;
+    text-align: center;
+}
+
+.gameover-nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gameover-tu {
+    margin-left: auto;
+    padding: 0 7px;
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+    color: #0a2a4a;
+    background: #cfe8ff;
+    border-radius: 6px;
+}
+
+.gameover-estadisticas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+}
+
+/* Vidas */
+.gameover-vidas {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.gameover-vida--llena {
+    color: #ff5a6a;
+}
+
+.gameover-vida--media {
+    color: #ff5a6a;
+    opacity: 0.55;
+}
+
+.gameover-vida--vacia {
+    color: #6b7b83;
+}
+
+/* ----- Botones ----- */
+.gameover-acciones {
+    display: flex;
+    gap: 12px;
+}
+
+.gameover-btn {
+    flex: 1;
+    padding: 10px 14px 12px;
+    font-family: inherit;
+    font-size: 1.8rem;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.08s, filter 0.15s, box-shadow 0.08s;
+}
+
+.gameover-btn--azul {
+    background: #0b8cf0;
+    box-shadow: 0 6px 0 #0a58a6;
+}
+
+.gameover-btn--roja {
+    background: #e0242e;
+    box-shadow: 0 6px 0 #8f1119;
+}
+
+.gameover-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.gameover-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.gameover-btn:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+}
+
+/* Pantallas angostas */
+@media (max-width: 520px) {
+    .gameover-estadisticas {
+        grid-template-columns: 1fr;
+    }
+
+    .gameover-acciones {
+        flex-direction: column;
+    }
+}
