@@ -573,9 +573,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', handlePlayerExit);
 });
 
-// SPA fallback for frontend routes in production
+// SPA fallback for frontend routes in production (Express 5 compatible)
 if (fs.existsSync(distPath)) {
-  app.get('*', (req, res, next) => {
+  app.use((req, res, next) => {
     if (req.url.startsWith('/socket.io')) return next();
     res.sendFile(path.join(distPath, 'index.html'));
   });
