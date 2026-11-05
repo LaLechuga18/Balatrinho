@@ -7,5 +7,12 @@ export default defineConfig({
   server: {
     host: true, // Listen on all network interfaces (0.0.0.0) for LAN access
     port: 5173,
+    proxy: {
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getSocket } from '../services/socketService';
 import type { NetworkPlayer } from '../types/multiplayerType';
 import { MenuBackground, MenuLogo } from './MenuDecor';
@@ -23,23 +23,57 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
   const [jugadoresEnSala, setJugadoresEnSala] = useState<NetworkPlayer[]>([]);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [copiado, setCopiado] = useState<boolean>(false);
+  const [cargando, setCargando] = useState<boolean>(false);
+  const [conectado, setConectado] = useState<boolean>(false);
+
+  // Guardamos las referencias actualizadas para los callbacks del socket
+  const codigoSalaRef = useRef(codigoSalaActual);
+  const nombreRef = useRef(nombre);
+  const esHostRef = useRef(esHost);
+
+  useEffect(() => {
+    codigoSalaRef.current = codigoSalaActual;
+    nombreRef.current = nombre;
+    esHostRef.current = esHost;
+  }, [codigoSalaActual, nombre, esHost]);
 
   useEffect(() => {
     const socket = getSocket();
+
+    const handleConnect = () => {
+      setConectado(true);
+      setErrorMsg('');
+    };
+
+    const handleDisconnect = () => {
+      setConectado(false);
+    };
+
+    const handleConnectError = () => {
+      setConectado(false);
+      setCargando(false);
+      setErrorMsg('⚠️ No se pudo conectar al servidor LAN en el puerto 3001. Asegúrate de haber iniciado el servidor con "npm run lan" o "npm run server".');
+    };
 
     const handleRoomJoined = ({
       roomCode,
       players,
       isHost: hostStatus,
+      playerId,
     }: {
       roomCode: string;
       playerId: string;
       players: NetworkPlayer[];
       isHost: boolean;
     }) => {
+      setCargando(false);
       setCodigoSalaActual(roomCode);
       setJugadoresEnSala(players);
       setEsHost(hostStatus);
+      const miJugador = players.find(p => p.id === playerId);
+      if (miJugador && !nombreRef.current.trim()) {
+        setNombre(miJugador.name);
+      }
       setErrorMsg('');
       setVista('sala_espera');
     };
@@ -57,31 +91,62 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
     }: {
       players: NetworkPlayer[];
     }) => {
-      onStartMultiplayer(codigoSalaActual, nombre, esHost, players);
+      setCargando(false);
+      const finalName = nombreRef.current.trim() || (esHostRef.current ? 'Anfitrión' : 'Jugador');
+      onStartMultiplayer(codigoSalaRef.current, finalName, esHostRef.current, players);
     };
 
     const handleRoomError = ({ message }: { message: string }) => {
+      setCargando(false);
       setErrorMsg(message);
     };
 
+    if (socket.connected) {
+      setConectado(true);
+    }
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
     socket.on('room_joined', handleRoomJoined);
     socket.on('room_updated', handleRoomUpdated);
     socket.on('game_started', handleGameStarted);
     socket.on('room_error', handleRoomError);
 
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
       socket.off('room_joined', handleRoomJoined);
       socket.off('room_updated', handleRoomUpdated);
       socket.off('game_started', handleGameStarted);
       socket.off('room_error', handleRoomError);
     };
-  }, [codigoSalaActual, nombre, esHost, onStartMultiplayer]);
+  }, [onStartMultiplayer]);
 
   const handleCrearSala = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
+    setCargando(true);
     const playerName = nombre.trim() || 'Anfitrión';
     const socket = getSocket();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     socket.emit('create_room', { playerName });
+
+    // Timeout de seguridad en caso de que el servidor no responda
+    setTimeout(() => {
+      setCargando(prev => {
+        if (prev) {
+          setErrorMsg('El servidor tardó en responder. Verifica que esté activo con "npm run lan".');
+          return false;
+        }
+        return false;
+      });
+    }, 4000);
   };
 
   const handleUnirseSala = (e: React.FormEvent) => {
@@ -90,12 +155,29 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
       setErrorMsg('Por favor ingresa el código de sala.');
       return;
     }
+    setErrorMsg('');
+    setCargando(true);
     const playerName = nombre.trim() || 'Jugador';
     const socket = getSocket();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     socket.emit('join_room', {
       roomCode: codigoSalaInput.trim().toUpperCase(),
       playerName,
     });
+
+    setTimeout(() => {
+      setCargando(prev => {
+        if (prev) {
+          setErrorMsg('No se recibió respuesta del servidor.');
+          return false;
+        }
+        return false;
+      });
+    }, 4000);
   };
 
   const handleIniciarPartida = () => {
@@ -117,6 +199,10 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
         <MenuLogo chico />
 
         <div className="menu-panel">
+          <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '0.85rem', color: conectado ? '#7be3b4' : '#ffd36b' }}>
+            {conectado ? '🟢 Servidor LAN conectado' : '🟡 Conectando al servidor LAN...'}
+          </div>
+
           {errorMsg && <div className="menu-error">{errorMsg}</div>}
 
           {/* ─── VISTA: CREAR O UNIRSE ─── */}
@@ -160,14 +246,24 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 maxLength={15}
+                disabled={cargando}
                 autoFocus
               />
               <div className="menu-botones-fila">
-                <button type="button" className="menu-button menu-button--oscuro" onClick={() => setVista('inicio')}>
+                <button
+                  type="button"
+                  className="menu-button menu-button--oscuro"
+                  onClick={() => { setErrorMsg(''); setVista('inicio'); }}
+                  disabled={cargando}
+                >
                   ← VOLVER
                 </button>
-                <button type="submit" className="menu-button menu-button--blue">
-                  CREAR
+                <button
+                  type="submit"
+                  className="menu-button menu-button--blue"
+                  disabled={cargando}
+                >
+                  {cargando ? 'CREANDO...' : 'CREAR'}
                 </button>
               </div>
             </form>
@@ -185,6 +281,7 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 maxLength={15}
+                disabled={cargando}
               />
               <label className="menu-label">Código de sala (4 letras)</label>
               <input
@@ -194,14 +291,24 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
                 value={codigoSalaInput}
                 onChange={(e) => setCodigoSalaInput(e.target.value.toUpperCase())}
                 maxLength={4}
+                disabled={cargando}
                 autoFocus
               />
               <div className="menu-botones-fila">
-                <button type="button" className="menu-button menu-button--oscuro" onClick={() => setVista('inicio')}>
+                <button
+                  type="button"
+                  className="menu-button menu-button--oscuro"
+                  onClick={() => { setErrorMsg(''); setVista('inicio'); }}
+                  disabled={cargando}
+                >
                   ← VOLVER
                 </button>
-                <button type="submit" className="menu-button menu-button--gold">
-                  UNIRSE
+                <button
+                  type="submit"
+                  className="menu-button menu-button--gold"
+                  disabled={cargando}
+                >
+                  {cargando ? 'UNIÉNDOSE...' : 'UNIRSE'}
                 </button>
               </div>
             </form>

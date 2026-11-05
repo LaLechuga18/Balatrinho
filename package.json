@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.js",
+    "dev:client": "vite",
     "server": "node server/server.js",
-    "lan": "node server/server.js & vite",
+    "lan": "node scripts/dev.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

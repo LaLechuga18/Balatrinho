@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { CardData, EntradaHistorial, Palo } from '../types/gameType';
 import type { NetworkPlayer, RoundResolutionResult, FinalLeaderboardEntry } from '../types/multiplayerType';
 import type { ResultadoJugador } from '../components/PantallaFin';
+import type { JugadaAnimadaState } from '../components/PlayedHandAnimation';
 import { DeckManager } from '../logic/DeckManager';
 import { evaluarMano } from '../logic/HandEvaluator';
 import { generarOfertaTienda, type Comodin } from '../logic/jokers';
@@ -72,6 +73,17 @@ export function useGameState(props?: UseGameStateProps) {
   const [esperandoOponentes, setEsperandoOponentes] = useState<boolean>(false);
   const [esperandoSiguienteRonda, setEsperandoSiguienteRonda] = useState<boolean>(false);
   const [resultadosTablaFin, setResultadosTablaFin] = useState<ResultadoJugador[]>([]);
+
+  // ─── Estado de animación de jugada ──────────────────────────────────────────
+  const [jugadaAnimada, setJugadaAnimada] = useState<JugadaAnimadaState | null>(null);
+  const timeoutsRef = useRef<number[]>([]);
+
+  // Limpiar temporizadores al desmontar
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   // ─── Derivados ──────────────────────────────────────────────────────────────
   const vidasCorazones = vidasHp / 2;
@@ -270,46 +282,74 @@ export function useGameState(props?: UseGameStateProps) {
   };
 
   const confirmarMano = () => {
-    if (juegoTerminado || manosRestantes <= 0 || esperandoOponentes) return;
+    if (juegoTerminado || manosRestantes <= 0 || esperandoOponentes || jugadaAnimada) return;
 
     const cartasAJugar = mano.filter(carta => carta.seleccionada);
     if (cartasAJugar.length === 0) return;
 
     const calculo = evaluarMano(cartasAJugar, comodinesEquipados);
-    const nuevoPuntajeRonda = puntajeRonda + calculo.puntajeFinal;
-    const nuevoPuntajeTotal = puntajeTotal + calculo.puntajeFinal;
 
-    setPuntajeRonda(nuevoPuntajeRonda);
-    setPuntajeTotal(nuevoPuntajeTotal);
-    setMano(reponerCartasSeleccionadas());
+    // 1. Iniciar animación en el centro (revelar cartas)
+    setJugadaAnimada({
+      cartas: cartasAJugar,
+      resultado: calculo,
+      fase: 'revelar',
+    });
 
-    const manosQueQuedan = manosRestantes - 1;
-    setManosRestantes(manosQueQuedan);
+    // Limpiar temporizadores anteriores si los hubiera
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
 
-    agregarHistorial(
-      `¡${calculo.nombreMano}! +${calculo.puntajeFinal} pts (${calculo.fichasTotales}🟦 × ${calculo.mult}🟥)`,
-      rondaActual
-    );
+    // 2. Fase de puntuación (banner con nombre, fichas x mult = total)
+    const t1 = window.setTimeout(() => {
+      setJugadaAnimada(prev => (prev ? { ...prev, fase: 'puntuando' } : null));
+    }, 350);
 
-    if (esMultiplayer) {
-      const socket = getSocket();
-      socket.emit('update_live_score', {
-        currentRoundScore: nuevoPuntajeRonda,
-        totalScore: nuevoPuntajeTotal,
-      });
+    // 3. Fase de desvanecer (cartas y banner suben y desaparecen)
+    const t2 = window.setTimeout(() => {
+      setJugadaAnimada(prev => (prev ? { ...prev, fase: 'desvanecer' } : null));
+    }, 1500);
 
-      if (manosQueQuedan === 0) {
-        setEsperandoOponentes(true);
-        socket.emit('finish_round', {
-          roundScore: nuevoPuntajeRonda,
+    // 4. Fin de animación: computar puntajes, reponer cartas y avanzar turno
+    const t3 = window.setTimeout(() => {
+      const nuevoPuntajeRonda = puntajeRonda + calculo.puntajeFinal;
+      const nuevoPuntajeTotal = puntajeTotal + calculo.puntajeFinal;
+
+      setPuntajeRonda(nuevoPuntajeRonda);
+      setPuntajeTotal(nuevoPuntajeTotal);
+      setMano(reponerCartasSeleccionadas());
+      setJugadaAnimada(null);
+
+      const manosQueQuedan = manosRestantes - 1;
+      setManosRestantes(manosQueQuedan);
+
+      agregarHistorial(
+        `¡${calculo.nombreMano}! +${calculo.puntajeFinal} pts (${calculo.fichasTotales}🟦 × ${calculo.mult}🟥)`,
+        rondaActual
+      );
+
+      if (esMultiplayer) {
+        const socket = getSocket();
+        socket.emit('update_live_score', {
+          currentRoundScore: nuevoPuntajeRonda,
           totalScore: nuevoPuntajeTotal,
         });
+
+        if (manosQueQuedan === 0) {
+          setEsperandoOponentes(true);
+          socket.emit('finish_round', {
+            roundScore: nuevoPuntajeRonda,
+            totalScore: nuevoPuntajeTotal,
+          });
+        }
+      } else {
+        if (manosQueQuedan === 0) {
+          terminarRondaSolo(nuevoPuntajeTotal);
+        }
       }
-    } else {
-      if (manosQueQuedan === 0) {
-        terminarRondaSolo(nuevoPuntajeTotal);
-      }
-    }
+    }, 1900);
+
+    timeoutsRef.current.push(t1, t2, t3);
   };
 
   const terminarRondaSolo = (puntajeDeRonda: number) => {
@@ -386,6 +426,8 @@ export function useGameState(props?: UseGameStateProps) {
       const socket = getSocket();
       socket.emit('play_again');
     }
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
     const ronda = crearRonda();
     mazoRef.current = ronda.mazo;
     setMano(ronda.mano);
@@ -405,6 +447,7 @@ export function useGameState(props?: UseGameStateProps) {
     setHistorial([]);
     setEsperandoOponentes(false);
     setEsperandoSiguienteRonda(false);
+    setJugadaAnimada(null);
     setMostrarFinPartida(false);
   };
 
@@ -431,6 +474,7 @@ export function useGameState(props?: UseGameStateProps) {
     oponentes,
     esperandoOponentes,
     esperandoSiguienteRonda,
+    jugadaAnimada,
     resultadosTablaFin,
     // Acciones
     alternarSeleccion,

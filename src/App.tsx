@@ -5,6 +5,8 @@ import { MazoContador } from './components/MazoContador';
 import { PantallaFin } from './components/PantallaFin';
 import { Tienda } from './components/Store';
 import { Lobby } from './components/Lobby';
+import { PlayedHandAnimation } from './components/PlayedHandAnimation';
+import { getSocket } from './services/socketService';
 import { evaluarMano } from './logic/HandEvaluator';
 import { JokerTip } from './components/JokerTip';
 import type { GameMode, NetworkPlayer } from './types/multiplayerType';
@@ -86,6 +88,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     oponentes,
     esperandoOponentes,
     esperandoSiguienteRonda,
+    jugadaAnimada,
     resultadosTablaFin,
     alternarSeleccion,
     descartarCartas,
@@ -158,7 +161,10 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     setCodigoSala(roomCode);
     setMiNombre(playerName || 'TÚ');
     setEsHost(hostStatus);
-    setOponentes(initialPlayers.filter(p => p.name !== playerName));
+    const miSocketId = getSocket().id;
+    setOponentes(
+      initialPlayers.filter(p => (miSocketId ? p.id !== miSocketId : p.name !== playerName))
+    );
     setModoJuego('multiplayer');
   };
 
@@ -378,9 +384,11 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
           </div>
         </section>
 
-        {/* Centro: más adelante aquí aparecerán las cartas jugadas */}
+        {/* Centro: animación de cartas jugadas y desglose de puntos */}
         <section className="mesa-centro">
-          {juegoTerminado || esperandoOponentes ? (
+          {jugadaAnimada ? (
+            <PlayedHandAnimation jugada={jugadaAnimada} />
+          ) : juegoTerminado || esperandoOponentes ? (
             <p className="mesa-pista mesa-pista--fin">{faseLabel}</p>
           ) : (
             <p className="mesa-pista">Selecciona hasta {MAX_SELECCION} cartas para jugarlas o descartarlas</p>
@@ -390,7 +398,13 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
         <section className="mesa-acciones">
           <button
             onClick={confirmarMano}
-            disabled={juegoTerminado || manosRestantes === 0 || cartasSeleccionadasCount === 0 || esperandoOponentes}
+            disabled={
+              juegoTerminado ||
+              manosRestantes === 0 ||
+              cartasSeleccionadasCount === 0 ||
+              esperandoOponentes ||
+              Boolean(jugadaAnimada)
+            }
             className="mesa-btn mesa-btn--azul"
           >
             JUGAR MANO
@@ -414,7 +428,13 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
 
           <button
             onClick={descartarCartas}
-            disabled={juegoTerminado || descartesRestantes === 0 || cartasSeleccionadasCount === 0 || esperandoOponentes}
+            disabled={
+              juegoTerminado ||
+              descartesRestantes === 0 ||
+              cartasSeleccionadasCount === 0 ||
+              esperandoOponentes ||
+              Boolean(jugadaAnimada)
+            }
             className="mesa-btn mesa-btn--roja"
           >
             DESCARTAR
@@ -423,13 +443,17 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
 
         <section className="mesa-mano-fila">
           <div className="mesa-cartas">
-            {manoOrdenada.map((carta) => (
-              <Card
-                key={`${carta.valor}-${carta.palo}`}
-                data={carta}
-                onClick={() => alternarSeleccion(mano.indexOf(carta))}
-              />
-            ))}
+            {manoOrdenada.map((carta) => {
+              const estaSiendoJugada = Boolean(jugadaAnimada && carta.seleccionada);
+              return (
+                <Card
+                  key={`${carta.valor}-${carta.palo}`}
+                  data={carta}
+                  className={estaSiendoJugada ? 'carta-en-vuelo' : ''}
+                  onClick={() => !jugadaAnimada && alternarSeleccion(mano.indexOf(carta))}
+                />
+              );
+            })}
           </div>
           <div className="mesa-mazo">
             <MazoContador total={cartasEnMazo} conteo={conteoMazo} />
