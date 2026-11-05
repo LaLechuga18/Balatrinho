@@ -4,11 +4,8 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    const host = window.location.hostname || 'localhost';
-    // Connect to port 3001 if in standard dev mode, or same origin
-    const serverUrl = window.location.port === '5173'
-      ? `http://${host}:3001`
-      : window.location.origin;
+    // Connect to custom server URL if provided, or current domain origin
+    const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || window.location.origin;
 
     socket = io(serverUrl, {
       transports: ['websocket', 'polling'],

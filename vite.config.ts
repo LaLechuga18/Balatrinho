@@ -5,11 +5,11 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // Listen on all network interfaces (0.0.0.0) for LAN access
+    host: '0.0.0.0', // Listen on all network interfaces (0.0.0.0) for LAN access
     port: 5173,
     proxy: {
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: 'http://127.0.0.1:3001',
         ws: true,
         changeOrigin: true,
       },

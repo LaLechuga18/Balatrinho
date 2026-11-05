@@ -156,6 +156,22 @@
     border-radius: 6px;
 }
 
+.gameover-rematch-listo {
+    margin-left: auto;
+    padding: 0 7px;
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+    color: #0a3d0f;
+    background: #75e683;
+    border-radius: 6px;
+}
+
+.gameover-rematch-esperando {
+    margin-left: auto;
+    font-size: 1.1rem;
+    opacity: 0.7;
+}
+
 .gameover-estadisticas {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -209,6 +225,12 @@
 .gameover-btn--roja {
     background: #e0242e;
     box-shadow: 0 6px 0 #8f1119;
+}
+
+.gameover-btn--esperando {
+    opacity: 0.8;
+    cursor: not-allowed !important;
+    filter: brightness(0.9) !important;
 }
 
 .gameover-btn:hover {

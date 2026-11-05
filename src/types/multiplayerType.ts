@@ -9,6 +9,12 @@ export interface NetworkPlayer {
   totalScore: number;
   roundFinished: boolean;
   shopReady: boolean;
+  rematchReady?: boolean;
+  jokers?: Array<{
+    id: string;
+    nombre: string;
+    imagen?: string;
+  }>;
 }
 
 export interface RoundResolutionResult {
@@ -19,7 +25,13 @@ export interface RoundResolutionResult {
   damage: number;
   newHp: number;
   coinsEarned: number;
+  totalCoins?: number;
   isAlive: boolean;
+  jokers?: Array<{
+    id: string;
+    nombre: string;
+    imagen?: string;
+  }>;
 }
 
 export interface FinalLeaderboardEntry {

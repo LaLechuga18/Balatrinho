@@ -3,6 +3,7 @@ import type { CardData, EntradaHistorial, Palo } from '../types/gameType';
 import type { NetworkPlayer, RoundResolutionResult, FinalLeaderboardEntry } from '../types/multiplayerType';
 import type { ResultadoJugador } from '../components/PantallaFin';
 import type { JugadaAnimadaState } from '../components/PlayedHandAnimation';
+import type { RoundStatsInfo, PlayerRoundStat } from '../components/RoundStatsModal';
 import { DeckManager } from '../logic/DeckManager';
 import { evaluarMano } from '../logic/HandEvaluator';
 import { generarOfertaTienda, type Comodin } from '../logic/jokers';
@@ -13,10 +14,11 @@ export const CARTAS_POR_RONDA = 8;
 export const MAX_SELECCION = 5;
 export const MAX_DESCARTES_POR_RONDA = 3;
 export const MAX_MANOS_POR_RONDA = 4;
-export const MAX_RONDAS = 5;
 export const MAX_COMODINES = 3;
 export const COMODINES_EN_OFERTA = 3;
 export const VIDAS_INICIALES = 3; // Las vidas se miden en medios corazones (3 = 3 corazones = 6 hp)
+export const COSTO_REROLL_BASE = 3;
+export const INCREMENTO_REROLL = 2;
 export const COSTO_REROLL = 3;
 export const PORCENTAJE_VENTA = 0.4; // 40% del costo original
 
@@ -46,6 +48,7 @@ interface UseGameStateProps {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 export function useGameState(props?: UseGameStateProps) {
   const modo = props?.modo || 'solo';
+  const nombreJugador = props?.nombreJugador || 'TÚ';
   const esMultiplayer = modo === 'multiplayer';
 
   const [rondaInicial] = useState(crearRonda);
@@ -62,16 +65,25 @@ export function useGameState(props?: UseGameStateProps) {
   const [monedas, setMonedas] = useState<number>(0);
   const [vidasHp, setVidasHp] = useState<number>(VIDAS_INICIALES * 2);
   const [comodinesEquipados, setComodinesEquipados] = useState<Comodin[]>([]);
+  const [totalCartasDescartadas, setTotalCartasDescartadas] = useState<number>(0);
+  const totalDescartesRef = useRef<number>(0);
+
   const [mostrarTienda, setMostrarTienda] = useState<boolean>(false);
   const [ofertaTienda, setOfertaTienda] = useState<Comodin[]>([]);
   const semillaTiendaRef = useRef<number>(0);
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [mostrarFinPartida, setMostrarFinPartida] = useState<boolean>(false);
 
+  // ─── Modal de estadísticas de la ronda ─────────────────────────────────────
+  const [mostrarResumenRonda, setMostrarResumenRonda] = useState<boolean>(false);
+  const [resumenRondaData, setResumenRondaData] = useState<RoundStatsInfo | null>(null);
+
   // ─── Estado multijugador ─────────────────────────────────────────────────────
   const [oponentes, setOponentes] = useState<NetworkPlayer[]>([]);
   const [esperandoOponentes, setEsperandoOponentes] = useState<boolean>(false);
   const [esperandoSiguienteRonda, setEsperandoSiguienteRonda] = useState<boolean>(false);
+  const [costoRerollActual, setCostoRerollActual] = useState<number>(COSTO_REROLL_BASE);
+  const [rematchListo, setRematchListo] = useState<boolean>(false);
   const [resultadosTablaFin, setResultadosTablaFin] = useState<ResultadoJugador[]>([]);
 
   // ─── Estado de animación de jugada ──────────────────────────────────────────
@@ -87,7 +99,7 @@ export function useGameState(props?: UseGameStateProps) {
 
   // ─── Derivados ──────────────────────────────────────────────────────────────
   const vidasCorazones = vidasHp / 2;
-  const juegoTerminado = rondaActual > MAX_RONDAS || vidasHp <= 0;
+  const juegoTerminado = vidasHp <= 0;
   const derrota = vidasHp <= 0;
 
   // ─── Helpers internos ───────────────────────────────────────────────────────
@@ -130,14 +142,18 @@ export function useGameState(props?: UseGameStateProps) {
       playerId,
       currentRoundScore,
       totalScore,
+      jokers,
     }: {
       playerId: string;
       currentRoundScore: number;
       totalScore: number;
+      jokers?: Array<{ id: string; nombre: string; imagen?: string }>;
     }) => {
       setOponentes(prev =>
         prev.map(p =>
-          p.id === playerId ? { ...p, currentRoundScore, totalScore } : p
+          p.id === playerId
+            ? { ...p, currentRoundScore, totalScore, ...(jokers ? { jokers } : {}) }
+            : p
         )
       );
     };
@@ -163,18 +179,24 @@ export function useGameState(props?: UseGameStateProps) {
       results,
       isGameOver,
       finalLeaderboard,
+      players,
     }: {
       round: number;
       results: RoundResolutionResult[];
       isGameOver: boolean;
       finalLeaderboard?: FinalLeaderboardEntry[];
+      players?: NetworkPlayer[];
+      abandonedWin?: boolean;
     }) => {
       setEsperandoOponentes(false);
 
       const miResultado = results.find(r => r.playerId === socket.id);
+      const miDanio = miResultado?.damage ?? 0;
+      const misMonedasGanadas = miResultado?.coinsEarned ?? 0;
+
       if (miResultado) {
         setVidasHp(miResultado.newHp);
-        setMonedas(prev => prev + miResultado.coinsEarned);
+        setMonedas(prev => prev + misMonedasGanadas);
 
         const detalleDaño = miResultado.damage > 0
           ? ` 💔 Recibiste -${miResultado.damage / 2} corazón`
@@ -187,10 +209,13 @@ export function useGameState(props?: UseGameStateProps) {
         );
       }
 
+      const allPlayersList = players || oponentes;
+
       // Actualizar vidas y monedas de oponentes
       setOponentes(prev =>
         prev.map(p => {
           const res = results.find(r => r.playerId === p.id);
+          const fromPlayers = allPlayersList.find(pl => pl.id === p.id);
           if (res) {
             return {
               ...p,
@@ -198,9 +223,11 @@ export function useGameState(props?: UseGameStateProps) {
               isAlive: res.isAlive,
               roundFinished: false,
               shopReady: false,
+              coins: res.totalCoins ?? p.coins,
+              jokers: res.jokers || fromPlayers?.jokers || p.jokers,
             };
           }
-          return p;
+          return fromPlayers ? { ...p, ...fromPlayers } : p;
         })
       );
 
@@ -213,12 +240,42 @@ export function useGameState(props?: UseGameStateProps) {
           }));
           setResultadosTablaFin(formatResultados);
         }
+      }
+
+      if (results.length > 0) {
+        const statsMulti: PlayerRoundStat[] = results.map(r => {
+          const matchedPlayer = allPlayersList.find(p => p.id === r.playerId);
+          return {
+            id: r.playerId,
+            name: r.name,
+            isHost: matchedPlayer?.isHost,
+            roundScore: r.roundScore,
+            totalScore: matchedPlayer?.totalScore ?? r.roundScore,
+            rank: r.rank,
+            damage: r.damage,
+            hp: r.newHp,
+            coinsEarned: r.coinsEarned,
+            totalCoins: r.totalCoins ?? matchedPlayer?.coins ?? 0,
+            isAlive: r.isAlive,
+            eresTu: r.playerId === socket.id,
+            jokers: r.jokers || matchedPlayer?.jokers || (r.playerId === socket.id ? comodinesEquipados.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen })) : []),
+          };
+        });
+
+        setResumenRondaData({
+          ronda: round,
+          stats: statsMulti,
+          tuDanio: miDanio,
+          tuPuntaje: miResultado?.roundScore ?? puntajeRonda,
+          tusMonedasGanadas: misMonedasGanadas,
+          tusMonedasTotales: monedas + misMonedasGanadas,
+          tusVidasRestantes: (miResultado?.newHp ?? vidasHp) / 2,
+          esFinJuego: isGameOver,
+        });
+        setMostrarResumenRonda(true);
+      } else if (isGameOver) {
+        // En caso de victoria directa por abandono de los demás jugadores
         setMostrarFinPartida(true);
-      } else {
-        setRondaActual(round + 1);
-        semillaTiendaRef.current = 0;
-        setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, 0));
-        setMostrarTienda(true);
       }
     };
 
@@ -243,11 +300,50 @@ export function useGameState(props?: UseGameStateProps) {
       setOponentes(players.filter(p => p.id !== socket.id));
     };
 
+    const handleRematchStatus = ({ players }: { players: NetworkPlayer[] }) => {
+      setOponentes(players.filter(p => p.id !== socket.id));
+    };
+
+    const handleGameStarted = ({ round, players }: { round: number; players: NetworkPlayer[] }) => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+      const ronda = crearRonda();
+      mazoRef.current = ronda.mazo;
+      setMano(ronda.mano);
+      setCartasEnMazo(ronda.mazo.cartasRestantes());
+      setConteoMazo(conteoDesde(ronda.mazo));
+      setDescartesRestantes(MAX_DESCARTES_POR_RONDA);
+      setManosRestantes(MAX_MANOS_POR_RONDA);
+      setRondaActual(round || 1);
+      setPuntajeRonda(0);
+      setPuntajeTotal(0);
+      setMonedas(0);
+      setVidasHp(VIDAS_INICIALES * 2);
+      setComodinesEquipados([]);
+      setTotalCartasDescartadas(0);
+      totalDescartesRef.current = 0;
+      setMostrarTienda(false);
+      setMostrarResumenRonda(false);
+      setResumenRondaData(null);
+      setOfertaTienda([]);
+      semillaTiendaRef.current = 0;
+      setCostoRerollActual(COSTO_REROLL_BASE);
+      setHistorial([]);
+      setEsperandoOponentes(false);
+      setEsperandoSiguienteRonda(false);
+      setJugadaAnimada(null);
+      setRematchListo(false);
+      setMostrarFinPartida(false);
+      setOponentes(players.filter(p => p.id !== socket.id));
+    };
+
     socket.on('opponent_score_updated', handleOpponentScore);
     socket.on('opponent_finished_round', handleOpponentFinished);
     socket.on('round_resolved', handleRoundResolved);
     socket.on('all_shop_ready', handleAllShopReady);
     socket.on('room_updated', handleRoomUpdated);
+    socket.on('rematch_status_updated', handleRematchStatus);
+    socket.on('game_started', handleGameStarted);
 
     return () => {
       socket.off('opponent_score_updated', handleOpponentScore);
@@ -255,8 +351,10 @@ export function useGameState(props?: UseGameStateProps) {
       socket.off('round_resolved', handleRoundResolved);
       socket.off('all_shop_ready', handleAllShopReady);
       socket.off('room_updated', handleRoomUpdated);
+      socket.off('rematch_status_updated', handleRematchStatus);
+      socket.off('game_started', handleGameStarted);
     };
-  }, [esMultiplayer, comodinesEquipados, repartirRonda, agregarHistorial]);
+  }, [esMultiplayer, comodinesEquipados, puntajeRonda, monedas, vidasHp, oponentes, repartirRonda, agregarHistorial]);
 
   // ─── Acciones del jugador ───────────────────────────────────────────────────
 
@@ -276,6 +374,12 @@ export function useGameState(props?: UseGameStateProps) {
     if (!mano.some(c => c.seleccionada)) return;
 
     const cantidad = mano.filter(c => c.seleccionada).length;
+    setTotalCartasDescartadas(prev => {
+      const nuevo = prev + cantidad;
+      totalDescartesRef.current = nuevo;
+      return nuevo;
+    });
+
     setMano(reponerCartasSeleccionadas());
     setDescartesRestantes(prev => prev - 1);
     agregarHistorial(`Descartaste ${cantidad} carta${cantidad > 1 ? 's' : ''}.`, rondaActual);
@@ -287,7 +391,10 @@ export function useGameState(props?: UseGameStateProps) {
     const cartasAJugar = mano.filter(carta => carta.seleccionada);
     if (cartasAJugar.length === 0) return;
 
-    const calculo = evaluarMano(cartasAJugar, comodinesEquipados);
+    const calculo = evaluarMano(cartasAJugar, comodinesEquipados, {
+      monedas,
+      totalDescartes: totalDescartesRef.current,
+    });
 
     // 1. Iniciar animación en el centro (revelar cartas)
     setJugadaAnimada({
@@ -330,9 +437,11 @@ export function useGameState(props?: UseGameStateProps) {
 
       if (esMultiplayer) {
         const socket = getSocket();
+        const jokersData = comodinesEquipados.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen }));
         socket.emit('update_live_score', {
           currentRoundScore: nuevoPuntajeRonda,
           totalScore: nuevoPuntajeTotal,
+          jokers: jokersData,
         });
 
         if (manosQueQuedan === 0) {
@@ -340,11 +449,12 @@ export function useGameState(props?: UseGameStateProps) {
           socket.emit('finish_round', {
             roundScore: nuevoPuntajeRonda,
             totalScore: nuevoPuntajeTotal,
+            jokers: jokersData,
           });
         }
       } else {
         if (manosQueQuedan === 0) {
-          terminarRondaSolo(nuevoPuntajeTotal);
+          terminarRondaSolo(nuevoPuntajeRonda, nuevoPuntajeTotal);
         }
       }
     }, 1900);
@@ -352,15 +462,13 @@ export function useGameState(props?: UseGameStateProps) {
     timeoutsRef.current.push(t1, t2, t3);
   };
 
-  const terminarRondaSolo = (puntajeDeRonda: number) => {
+  const terminarRondaSolo = (puntajeDeRonda: number, nuevoTotal: number) => {
     const posicion: 1 | 2 | 3 | 4 = 1;
     const monedasPosicion = MONEDAS_POR_POSICION[posicion - 1];
     const monedasPuntos = Math.floor(puntajeDeRonda / 100) * MONEDAS_POR_100_PUNTOS;
     const monedasGanadas = monedasPosicion + monedasPuntos;
-    setMonedas(prev => prev + monedasGanadas);
-
-    const siguienteRonda = rondaActual + 1;
-    setRondaActual(siguienteRonda);
+    const nuevoTotalMonedas = monedas + monedasGanadas;
+    setMonedas(nuevoTotalMonedas);
 
     const detalle = `+${monedasPosicion}🪙 pos. +${monedasPuntos}🪙 pts = +${monedasGanadas}🪙`;
     agregarHistorial(
@@ -368,16 +476,44 @@ export function useGameState(props?: UseGameStateProps) {
       rondaActual
     );
 
-    if (siguienteRonda <= MAX_RONDAS) {
+    const statsSolo: PlayerRoundStat[] = [{
+      id: 'local',
+      name: nombreJugador || 'TÚ',
+      roundScore: puntajeDeRonda,
+      totalScore: nuevoTotal,
+      rank: 1,
+      damage: 0,
+      hp: vidasHp,
+      coinsEarned: monedasGanadas,
+      totalCoins: nuevoTotalMonedas,
+      isAlive: true,
+      eresTu: true,
+      jokers: comodinesEquipados.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen })),
+    }];
+
+    setResumenRondaData({
+      ronda: rondaActual,
+      stats: statsSolo,
+      tuDanio: 0,
+      tuPuntaje: puntajeDeRonda,
+      tusMonedasGanadas: monedasGanadas,
+      tusMonedasTotales: nuevoTotalMonedas,
+      tusVidasRestantes: vidasHp / 2,
+      esFinJuego: false,
+    });
+    setMostrarResumenRonda(true);
+  };
+
+  const continuarTrasResumenRonda = () => {
+    setMostrarResumenRonda(false);
+    if (resumenRondaData?.esFinJuego || vidasHp <= 0) {
+      setMostrarFinPartida(true);
+    } else {
+      setRondaActual(prev => (esMultiplayer ? prev : prev + 1));
       semillaTiendaRef.current = 0;
+      setCostoRerollActual(COSTO_REROLL_BASE);
       setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, 0));
       setMostrarTienda(true);
-    } else {
-      agregarHistorial(`¡Partida terminada! Puntaje final: ${puntajeDeRonda}`, rondaActual);
-      setResultadosTablaFin([
-        { nombre: 'TÚ', puntaje: puntajeDeRonda, eresTu: true },
-      ]);
-      setMostrarFinPartida(true);
     }
   };
 
@@ -385,9 +521,17 @@ export function useGameState(props?: UseGameStateProps) {
     const comodin = comodinesEquipados.find(c => c.id === comodinId);
     if (!comodin) return;
     const reembolso = Math.floor(comodin.costo * PORCENTAJE_VENTA);
+    const nuevosComodines = comodinesEquipados.filter(c => c.id !== comodinId);
     setMonedas(prev => prev + reembolso);
-    setComodinesEquipados(prev => prev.filter(c => c.id !== comodinId));
+    setComodinesEquipados(nuevosComodines);
     agregarHistorial(`Vendiste "${comodin.nombre}" por 🪙 ${reembolso}.`, rondaActual);
+
+    if (esMultiplayer) {
+      const socket = getSocket();
+      socket.emit('update_jokers', {
+        jokers: nuevosComodines.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen })),
+      });
+    }
   };
 
   const comprarComodin = (comodin: Comodin) => {
@@ -395,16 +539,26 @@ export function useGameState(props?: UseGameStateProps) {
     if (comodinesEquipados.length >= MAX_COMODINES) return;
     if (comodinesEquipados.some(c => c.id === comodin.id)) return;
 
+    const nuevosComodines = [...comodinesEquipados, comodin];
     setMonedas(prev => prev - comodin.costo);
-    setComodinesEquipados(prev => [...prev, comodin]);
+    setComodinesEquipados(nuevosComodines);
     agregarHistorial(`Compraste el comodín "${comodin.nombre}".`, rondaActual - 1);
+
+    if (esMultiplayer) {
+      const socket = getSocket();
+      socket.emit('update_jokers', {
+        jokers: nuevosComodines.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen })),
+      });
+    }
   };
 
   const continuarTrasTienda = () => {
     if (esMultiplayer) {
       setEsperandoSiguienteRonda(true);
       const socket = getSocket();
-      socket.emit('shop_ready');
+      socket.emit('shop_ready', {
+        jokers: comodinesEquipados.map(c => ({ id: c.id, nombre: c.nombre, imagen: c.imagen })),
+      });
     } else {
       setMostrarTienda(false);
       setMano(repartirRonda());
@@ -415,17 +569,14 @@ export function useGameState(props?: UseGameStateProps) {
   };
 
   const rerollTienda = () => {
-    if (monedas < COSTO_REROLL) return;
+    if (monedas < costoRerollActual) return;
     semillaTiendaRef.current += 1;
-    setMonedas(prev => prev - COSTO_REROLL);
+    setMonedas(prev => prev - costoRerollActual);
+    setCostoRerollActual(prev => prev + INCREMENTO_REROLL);
     setOfertaTienda(generarOfertaTienda(comodinesEquipados, COMODINES_EN_OFERTA, semillaTiendaRef.current));
   };
 
-  const reiniciarJuego = () => {
-    if (esMultiplayer) {
-      const socket = getSocket();
-      socket.emit('play_again');
-    }
+  const reiniciarJuegoLocal = useCallback(() => {
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
     const ronda = crearRonda();
@@ -441,14 +592,38 @@ export function useGameState(props?: UseGameStateProps) {
     setMonedas(0);
     setVidasHp(VIDAS_INICIALES * 2);
     setComodinesEquipados([]);
+    setTotalCartasDescartadas(0);
+    totalDescartesRef.current = 0;
     setMostrarTienda(false);
+    setMostrarResumenRonda(false);
+    setResumenRondaData(null);
     setOfertaTienda([]);
     semillaTiendaRef.current = 0;
+    setCostoRerollActual(COSTO_REROLL_BASE);
     setHistorial([]);
     setEsperandoOponentes(false);
     setEsperandoSiguienteRonda(false);
     setJugadaAnimada(null);
+    setRematchListo(false);
     setMostrarFinPartida(false);
+  }, []);
+
+  const pedirRevancha = () => {
+    if (esMultiplayer) {
+      setRematchListo(true);
+      const socket = getSocket();
+      socket.emit('rematch_ready');
+    } else {
+      reiniciarJuegoLocal();
+    }
+  };
+
+  const abandonarPartida = () => {
+    if (esMultiplayer) {
+      const socket = getSocket();
+      socket.emit('leave_room');
+    }
+    reiniciarJuegoLocal();
   };
 
   return {
@@ -465,7 +640,10 @@ export function useGameState(props?: UseGameStateProps) {
     vidasCorazones,
     vidasHp,
     comodinesEquipados,
+    totalCartasDescartadas,
     mostrarTienda,
+    mostrarResumenRonda,
+    resumenRondaData,
     ofertaTienda,
     historial,
     mostrarFinPartida,
@@ -474,6 +652,8 @@ export function useGameState(props?: UseGameStateProps) {
     oponentes,
     esperandoOponentes,
     esperandoSiguienteRonda,
+    costoRerollActual,
+    rematchListo,
     jugadaAnimada,
     resultadosTablaFin,
     // Acciones
@@ -483,8 +663,11 @@ export function useGameState(props?: UseGameStateProps) {
     comprarComodin,
     venderComodin,
     continuarTrasTienda,
+    continuarTrasResumenRonda,
     rerollTienda,
-    reiniciarJuego,
+    pedirRevancha,
+    abandonarPartida,
+    reiniciarJuego: pedirRevancha,
     setOponentes,
   };
 }

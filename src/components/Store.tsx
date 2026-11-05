@@ -10,8 +10,10 @@ interface TiendaProps {
   comodinesEquipados: Comodin[];
   maxComodines: number;
   costoReroll: number;
+  porcentajeVenta?: number;
   esperandoSiguienteRonda?: boolean;
   onComprar: (comodin: Comodin) => void;
+  onVender?: (comodinId: string) => void;
   onReroll: () => void;
   onContinuar: () => void;
 }
@@ -22,8 +24,10 @@ export function Tienda({
   comodinesEquipados,
   maxComodines,
   costoReroll,
+  porcentajeVenta = 0.4,
   esperandoSiguienteRonda = false,
   onComprar,
+  onVender,
   onReroll,
   onContinuar,
 }: TiendaProps) {
@@ -116,13 +120,35 @@ export function Tienda({
             {Array.from({ length: maxComodines }).map((_, index) => {
               const comodin = comodinesEquipados[index];
 
-              return comodin ? (
-                <div key={comodin.id} className="shop-mini joker-tip-anclaje">
-                  <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
-                  <JokerTip comodin={comodin} lado="arriba" />
+              if (!comodin) {
+                return (
+                  <div key={`vacio-${index}`} className="shop-tuyo-slot">
+                    <div className="shop-mini shop-mini--vacio">Vacío</div>
+                    <span className="shop-tuyo-nombre">&nbsp;</span>
+                  </div>
+                );
+              }
+
+              const valorVenta = Math.floor(comodin.costo * porcentajeVenta);
+
+              return (
+                <div key={comodin.id} className="shop-tuyo-slot joker-tip-anclaje">
+                  <div className="shop-mini">
+                    <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
+                  </div>
+                  <span className="shop-tuyo-nombre">{comodin.nombre}</span>
+                  {onVender && (
+                    <button
+                      className="shop-btn-vender"
+                      onClick={() => onVender(comodin.id)}
+                      disabled={esperandoSiguienteRonda}
+                      title={`Vender por 🪙 ${valorVenta}`}
+                    >
+                      Vender 🪙 {valorVenta}
+                    </button>
+                  )}
+                  <JokerTip comodin={comodin} extra={`Vender por 🪙 ${valorVenta}`} lado="arriba" />
                 </div>
-              ) : (
-                <div key={`vacio-${index}`} className="shop-mini shop-mini--vacio">Vacío</div>
               );
             })}
           </div>

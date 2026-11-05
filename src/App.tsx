@@ -6,6 +6,7 @@ import { PantallaFin } from './components/PantallaFin';
 import { Tienda } from './components/Store';
 import { Lobby } from './components/Lobby';
 import { PlayedHandAnimation } from './components/PlayedHandAnimation';
+import { RoundStatsModal } from './components/RoundStatsModal';
 import { getSocket } from './services/socketService';
 import { evaluarMano } from './logic/HandEvaluator';
 import { JokerTip } from './components/JokerTip';
@@ -13,10 +14,8 @@ import type { GameMode, NetworkPlayer } from './types/multiplayerType';
 import {
   useGameState,
   MAX_SELECCION,
-  MAX_RONDAS,
   MAX_COMODINES,
   VIDAS_INICIALES,
-  COSTO_REROLL,
   PORCENTAJE_VENTA,
 } from './hooks/useGameState';
 import './App.css';
@@ -79,7 +78,10 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     monedas,
     vidasCorazones,
     comodinesEquipados,
+    totalCartasDescartadas,
     mostrarTienda,
+    mostrarResumenRonda,
+    resumenRondaData,
     ofertaTienda,
     historial,
     mostrarFinPartida,
@@ -88,6 +90,8 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     oponentes,
     esperandoOponentes,
     esperandoSiguienteRonda,
+    costoRerollActual,
+    rematchListo,
     jugadaAnimada,
     resultadosTablaFin,
     alternarSeleccion,
@@ -96,8 +100,10 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     comprarComodin,
     venderComodin,
     continuarTrasTienda,
+    continuarTrasResumenRonda,
     rerollTienda,
     reiniciarJuego,
+    abandonarPartida,
     setOponentes,
   } = gameState;
 
@@ -132,8 +138,12 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
   const seleccionKey = cartasSeleccionadas.map(c => `${c.valor}${c.palo}`).join(',');
 
   const resultadoScoring = useMemo(
-    () => evaluarMano(cartasSeleccionadas, comodinesEquipados),
-    [seleccionKey, comodinesEquipados] // eslint-disable-line react-hooks/exhaustive-deps
+    () =>
+      evaluarMano(cartasSeleccionadas, comodinesEquipados, {
+        monedas,
+        totalDescartes: totalCartasDescartadas,
+      }),
+    [seleccionKey, comodinesEquipados, monedas, totalCartasDescartadas]
   );
 
   const faseLabel = derrota
@@ -168,9 +178,9 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     setModoJuego('multiplayer');
   };
 
-  // Sale de la partida: si hay menú principal vuelve a él; si no, regresa al lobby
+  // Sale de la partida: abandona la sala en el servidor y vuelve al menú principal o lobby
   const handleSalirAlMenu = () => {
-    reiniciarJuego();
+    abandonarPartida();
     if (onVolverAlMenu) {
       onVolverAlMenu();
     } else {
@@ -192,7 +202,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
     <div className="mesa">
 
       {/* OVERLAY DE ESPERA DE OPONENTES AL TERMINAR MANOS */}
-      {esperandoOponentes && (
+      {esperandoOponentes && !mostrarResumenRonda && (
         <div className="espera-overlay">
           <div className="espera-modal">
             <div className="espera-icono">⏳</div>
@@ -205,38 +215,52 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
         </div>
       )}
 
+      {/* MODAL DE ESTADÍSTICAS Y RESUMEN DE LA RONDA */}
+      {mostrarResumenRonda && resumenRondaData && (
+        <RoundStatsModal
+          info={resumenRondaData}
+          onContinuar={continuarTrasResumenRonda}
+        />
+      )}
+
       {/* PANTALLA DE FIN DE PARTIDA */}
       {mostrarFinPartida && (
         <PantallaFin
           resultados={
             resultadosTablaFin.length > 0
-              ? resultadosTablaFin
-              : [{ nombre: miNombre, puntaje: puntajeTotal, eresTu: true }]
+              ? resultadosTablaFin.map(r => ({
+                  ...r,
+                  rematchReady: r.eresTu
+                    ? rematchListo
+                    : (oponentes.find(op => op.name === r.nombre)?.rematchReady ?? false),
+                }))
+              : [{ nombre: miNombre, puntaje: puntajeTotal, eresTu: true, rematchReady: rematchListo }]
           }
           derrota={derrota}
-          rondasJugadas={Math.min(rondaActual, MAX_RONDAS)}
-          maxRondas={MAX_RONDAS}
+          rondasJugadas={rondaActual}
           monedas={monedas}
           comodines={comodinesEquipados.length}
           maxComodines={MAX_COMODINES}
           vidas={vidasCorazones}
           vidasMax={VIDAS_INICIALES}
           codigoSala={codigoSala || undefined}
+          rematchListo={rematchListo}
           onJugarOtraVez={reiniciarJuego}
           onFinalizar={handleSalirAlMenu}
         />
       )}
 
-      {/* TIENDA (se muestra al terminar cada ronda) */}
+      {/* TIENDA (se muestra al terminar cada ronda tras el resumen) */}
       {mostrarTienda && (
         <Tienda
           oferta={ofertaTienda}
           monedas={monedas}
           comodinesEquipados={comodinesEquipados}
           maxComodines={MAX_COMODINES}
-          costoReroll={COSTO_REROLL}
+          costoReroll={costoRerollActual}
           esperandoSiguienteRonda={esperandoSiguienteRonda}
           onComprar={comprarComodin}
+          onVender={venderComodin}
           onReroll={rerollTienda}
           onContinuar={continuarTrasTienda}
         />
@@ -245,7 +269,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
       {/* ── PANEL LATERAL: ronda, jugada actual, contadores, jugadores y registro ── */}
       <aside className="mesa-lateral">
         <div className="mesa-ronda">
-          <span className="mesa-ronda-titulo">RONDA {Math.min(rondaActual, MAX_RONDAS)}/{MAX_RONDAS}</span>
+          <span className="mesa-ronda-titulo">RONDA {rondaActual}</span>
           <span className="mesa-ronda-fase">{faseLabel}</span>
           {codigoSala && <span className="mesa-ronda-sala">Sala {codigoSala}</span>}
         </div>
@@ -264,8 +288,10 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
           </div>
           <div className="mesa-jugada-total">= {resultadoScoring.puntajeFinal}</div>
           <div className="mesa-jugada-detalle">
-            Base {resultadoScoring.fichasBase} · Cartas +{resultadoScoring.fichasCartas} · Comodines +{resultadoScoring.fichasComodines}
+            Base {resultadoScoring.fichasBase} · Cartas +{resultadoScoring.fichasCartas}
+            {resultadoScoring.fichasComodines > 0 && ` · Comodines +${resultadoScoring.fichasComodines}`}
             {resultadoScoring.multComodines > 0 && ` · Mult +${resultadoScoring.multComodines}`}
+            {(resultadoScoring.xMultComodines ?? 1) > 1 && ` · ×${resultadoScoring.xMultComodines}`}
           </div>
         </div>
 

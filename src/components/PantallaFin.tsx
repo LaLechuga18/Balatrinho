@@ -7,6 +7,7 @@ export interface ResultadoJugador {
   nombre: string;
   puntaje: number;
   eresTu: boolean;
+  rematchReady?: boolean;
 }
 
 interface PantallaFinProps {
@@ -24,6 +25,7 @@ interface PantallaFinProps {
   vidasMax?: number;
   /** Código de sala, solo en partidas en red. */
   codigoSala?: string;
+  rematchListo?: boolean;
   onJugarOtraVez: () => void;
   onFinalizar: () => void;
 }
@@ -59,6 +61,7 @@ export function PantallaFin({
   vidas,
   vidasMax = 3,
   codigoSala,
+  rematchListo = false,
   onJugarOtraVez,
   onFinalizar,
 }: PantallaFinProps) {
@@ -114,6 +117,13 @@ export function PantallaFin({
                 <span className="gameover-pos">{medalla(i + 1)}</span>
                 <span className="gameover-nombre">{jugador.nombre}</span>
                 {jugador.eresTu && <span className="gameover-tu">TÚ</span>}
+                {Boolean(codigoSala) && (
+                  jugador.rematchReady ? (
+                    <span className="gameover-rematch-listo">LISTO ✓</span>
+                  ) : (
+                    <span className="gameover-rematch-esperando" title="Esperando confirmación">⏳</span>
+                  )
+                )}
               </span>
               <span className="gameover-valor">{jugador.puntaje.toLocaleString()}</span>
             </div>
@@ -165,8 +175,12 @@ export function PantallaFin({
 
         {/* Botones */}
         <div className="gameover-acciones">
-          <button className="gameover-btn gameover-btn--azul" onClick={onJugarOtraVez}>
-            JUGAR OTRA VEZ
+          <button
+            className={`gameover-btn gameover-btn--azul${rematchListo ? ' gameover-btn--esperando' : ''}`}
+            onClick={onJugarOtraVez}
+            disabled={rematchListo}
+          >
+            {rematchListo ? 'LISTO (ESPERANDO...)' : 'JUGAR OTRA VEZ'}
           </button>
           <button className="gameover-btn gameover-btn--roja" onClick={onFinalizar}>
             MENÚ PRINCIPAL

@@ -8,8 +8,9 @@ export interface ResultadoMano {
   fichasCartas: number;
   fichasComodines: number; // fichas aportadas por los comodines equipados
   fichasTotales: number;
-  mult: number;            // multiplicador final (mano + comodines)
-  multComodines: number;   // cuánto del multiplicador viene de los comodines
+  mult: number;            // multiplicador final (mano + comodines escalado por xMult)
+  multComodines: number;   // cuánto del multiplicador viene de la suma de comodines
+  xMultComodines?: number; // factor multiplicador de comodines
   puntajeFinal: number;
   cartasPuntuables: CardData[];
 }
@@ -29,6 +30,7 @@ function resultadoVacio(): ResultadoMano {
     fichasTotales: 0,
     mult: 0,
     multComodines: 0,
+    xMultComodines: 1,
     puntajeFinal: 0,
     cartasPuntuables: [],
   };
@@ -36,10 +38,10 @@ function resultadoVacio(): ResultadoMano {
 
 export function evaluarMano(
   cartasSeleccionadas: CardData[],
-  comodinesEquipados: Comodin[] = []
+  comodinesEquipados: Comodin[] = [],
+  extraCtx?: { monedas?: number; totalDescartes?: number }
 ): ResultadoMano {
   if (cartasSeleccionadas.length === 0) return resultadoVacio();
-
 
   // 1. Agrupar por valor y por palo
   const cartasPorValor: Record<number, CardData[]> = {};
@@ -123,16 +125,18 @@ export function evaluarMano(
       cartasPuntuables = cartasOrdenadas;
   }
 
-    const fichasCartas = cartasPuntuables.reduce(
+  const fichasCartas = cartasPuntuables.reduce(
     (suma, c) => suma + obtenerFichasDeCarta(c.valor),
     0
   );
 
   // Efectos de los comodines equipados, calculados sobre las cartas que puntúan
-  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables, tipo);
+  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables, tipo, extraCtx);
 
   const fichasTotales = info.fichasBase + fichasCartas + efectoComodines.fichasExtra;
-  const multFinal = info.multBase + efectoComodines.multExtra;
+  const multBaseSuma = info.multBase + efectoComodines.multExtra;
+  const xMult = efectoComodines.xMult ?? 1;
+  const multFinal = Math.max(1, Math.round(multBaseSuma * xMult));
   const puntajeFinal = fichasTotales * multFinal;
 
   return {
@@ -143,6 +147,7 @@ export function evaluarMano(
     fichasTotales,
     mult: multFinal,
     multComodines: efectoComodines.multExtra,
+    xMultComodines: xMult,
     puntajeFinal,
     cartasPuntuables,
   };
