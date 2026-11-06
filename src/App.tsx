@@ -49,11 +49,13 @@ function estadosCorazones(vidasCorazones: number, total: number): Array<'lleno' 
 interface AppProps {
   /** Pantalla con la que arranca: 'solo' (juego local) o 'lobby' (crear / unirse a una sala en red). */
   modoInicial?: GameMode;
+  /** Tipo de servidor que usa el lobby: red local (LAN) o servidor online. */
+  modoRed?: 'lan' | 'online';
   /** Se llama al pulsar "Menú" o al terminar la partida, para volver al menú principal. */
   onVolverAlMenu?: () => void;
 }
 
-function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
+function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProps) {
   const [modoJuego, setModoJuego] = useState<GameMode>(modoInicial);
   const [codigoSala, setCodigoSala] = useState<string>('');
   const [miNombre, setMiNombre] = useState<string>('TÚ');
@@ -191,6 +193,7 @@ function App({ modoInicial = 'lobby', onVolverAlMenu }: AppProps) {
   if (modoJuego === 'lobby') {
     return (
       <Lobby
+        modoRed={modoRed}
         onStartSolo={handleStartSolo}
         onStartMultiplayer={handleStartMultiplayer}
         onVolver={onVolverAlMenu}

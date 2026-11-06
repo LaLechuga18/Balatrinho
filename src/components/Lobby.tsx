@@ -8,13 +8,19 @@ import '@fontsource/jersey-10/400.css';
 const MOSTRAR_MODO_SOLITARIO = false;
 
 interface LobbyProps {
+  /** Servidor al que se conecta: red local (LAN) o servidor online. */
+  modoRed?: 'lan' | 'online';
   onStartSolo: () => void;
   onStartMultiplayer: (roomCode: string, playerName: string, isHost: boolean, initialPlayers: NetworkPlayer[]) => void;
   /** Vuelve al menú principal. */
   onVolver?: () => void;
 }
 
-export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps) {
+export function Lobby({ modoRed = 'lan', onStartSolo, onStartMultiplayer, onVolver }: LobbyProps) {
+  const esOnline = modoRed === 'online';
+  const nombreModo = esOnline ? 'ONLINE' : 'LAN';
+  // Render (plan gratuito) tarda en despertar el servidor tras inactividad
+  const tiempoEspera = esOnline ? 60000 : 4000;
   const [vista, setVista] = useState<'inicio' | 'crear' | 'unirse' | 'sala_espera'>('inicio');
   const [nombre, setNombre] = useState<string>('');
   const [codigoSalaInput, setCodigoSalaInput] = useState<string>('');
@@ -52,7 +58,11 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
     const handleConnectError = () => {
       setConectado(false);
       setCargando(false);
-      setErrorMsg('⚠️ No se pudo conectar al servidor LAN en el puerto 3001. Asegúrate de haber iniciado el servidor con "npm run lan" o "npm run server".');
+      setErrorMsg(
+        esOnline
+          ? '⚠️ No se pudo conectar al servidor online. Puede estar despertando; inténtalo de nuevo en unos segundos.'
+          : '⚠️ No se pudo conectar al servidor LAN en el puerto 3001. Asegúrate de haber iniciado el servidor con "npm run lan" o "npm run server".'
+      );
     };
 
     const handleRoomJoined = ({
@@ -122,7 +132,7 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
       socket.off('game_started', handleGameStarted);
       socket.off('room_error', handleRoomError);
     };
-  }, [onStartMultiplayer]);
+  }, [onStartMultiplayer, esOnline]);
 
   const handleCrearSala = (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,12 +151,16 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
     setTimeout(() => {
       setCargando(prev => {
         if (prev) {
-          setErrorMsg('El servidor tardó en responder. Verifica que esté activo con "npm run lan".');
+          setErrorMsg(
+            esOnline
+              ? 'El servidor online tardó en responder. Inténtalo de nuevo.'
+              : 'El servidor tardó en responder. Verifica que esté activo con "npm run lan".'
+          );
           return false;
         }
         return false;
       });
-    }, 4000);
+    }, tiempoEspera);
   };
 
   const handleUnirseSala = (e: React.FormEvent) => {
@@ -177,7 +191,7 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
         }
         return false;
       });
-    }, 4000);
+    }, tiempoEspera);
   };
 
   const handleIniciarPartida = () => {
@@ -200,7 +214,7 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
 
         <div className="menu-panel">
           <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '0.85rem', color: conectado ? '#7be3b4' : '#ffd36b' }}>
-            {conectado ? '🟢 Servidor LAN conectado' : '🟡 Conectando al servidor LAN...'}
+            {conectado ? `🟢 Servidor ${nombreModo} conectado` : `🟡 Conectando al servidor ${nombreModo}...`}
           </div>
 
           {errorMsg && <div className="menu-error">{errorMsg}</div>}
@@ -208,7 +222,7 @@ export function Lobby({ onStartSolo, onStartMultiplayer, onVolver }: LobbyProps)
           {/* ─── VISTA: CREAR O UNIRSE ─── */}
           {vista === 'inicio' && (
             <div className="menu-opciones">
-              <h2 className="menu-panel-titulo">JUEGO EN LAN</h2>
+              <h2 className="menu-panel-titulo">{esOnline ? 'JUEGO ONLINE' : 'JUEGO EN LAN'}</h2>
               <button
                 className="menu-button menu-button--blue"
                 onClick={() => { setErrorMsg(''); setVista('crear'); }}
