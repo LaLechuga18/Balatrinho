@@ -1,3 +1,13 @@
+export interface JokerEnRed {
+  id: string;
+  nombre: string;
+  imagen?: string;
+  costo?: number;
+  precioVenta?: number;
+  multiplicadorGanancias?: number;
+  costoFinRonda?: number;
+}
+
 export interface NetworkPlayer {
   id: string;
   name: string;
@@ -10,11 +20,7 @@ export interface NetworkPlayer {
   roundFinished: boolean;
   shopReady: boolean;
   rematchReady?: boolean;
-  jokers?: Array<{
-    id: string;
-    nombre: string;
-    imagen?: string;
-  }>;
+  jokers?: JokerEnRed[];
 }
 
 export interface RoundResolutionResult {
@@ -27,11 +33,7 @@ export interface RoundResolutionResult {
   coinsEarned: number;
   totalCoins?: number;
   isAlive: boolean;
-  jokers?: Array<{
-    id: string;
-    nombre: string;
-    imagen?: string;
-  }>;
+  jokers?: JokerEnRed[];
 }
 
 export interface FinalLeaderboardEntry {
