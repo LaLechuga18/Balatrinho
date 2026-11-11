@@ -89,7 +89,7 @@ export function RoundStatsModal({ info, onContinuar }: RoundStatsModalProps) {
           <div className="roundstats-kpi">
             <span className="kpi-label">Monedas Ganadas</span>
             <span className="kpi-value kpi-value--oro">
-              +{info.tusMonedasGanadas} 🪙
+              {info.tusMonedasGanadas >= 0 ? '+' : ''}{info.tusMonedasGanadas} 🪙
               <small className="kpi-sub">Total: {info.tusMonedasTotales}</small>
             </span>
           </div>
@@ -129,7 +129,7 @@ export function RoundStatsModal({ info, onContinuar }: RoundStatsModalProps) {
                     <td className="col-vidas">
                       <Corazones hp={p.hp} />
                     </td>
-                    <td className="col-monedas">+{p.coinsEarned} 🪙</td>
+                    <td className="col-monedas">{p.coinsEarned >= 0 ? '+' : ''}{p.coinsEarned} 🪙</td>
                     <td className="col-jokers">
                       {p.jokers && p.jokers.length > 0 ? (
                         <div className="jokers-mini-lista">

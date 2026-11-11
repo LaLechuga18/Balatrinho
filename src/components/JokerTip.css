@@ -36,6 +36,11 @@
     bottom: calc(100% + 10px);
 }
 
+.joker-tip--maldito {
+    border-color: #ef4444;
+    box-shadow: 0 6px 0 rgba(127, 29, 29, 0.65);
+}
+
 /* Flechita que apunta al comodín */
 .joker-tip::before {
     content: '';
@@ -55,6 +60,14 @@
     border-top-color: #ff77ff;
 }
 
+.joker-tip--maldito.joker-tip--abajo::before {
+    border-bottom-color: #ef4444;
+}
+
+.joker-tip--maldito.joker-tip--arriba::before {
+    border-top-color: #ef4444;
+}
+
 .joker-tip-anclaje:hover>.joker-tip,
 .joker-tip-anclaje:focus-within>.joker-tip {
     opacity: 1;
@@ -68,14 +81,96 @@
     color: #ff9bff;
 }
 
+.joker-tip--maldito .joker-tip-nombre {
+    color: #f87171;
+}
+
 .joker-tip-descripcion {
     margin-top: 3px;
     font-size: 1.3rem;
     line-height: 1.2;
 }
 
+.joker-tip-venta {
+    margin-top: 6px;
+    padding-top: 5px;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    color: #fca5a5;
+    border-top: 1px solid rgba(239, 68, 68, 0.55);
+}
+
 .joker-tip-extra {
     margin-top: 6px;
     font-size: 1.1rem;
     color: #ffd36b;
+}
+
+/* ===== CURSED JOKERS ===== */
+.joker-tip--maldito { border-color: #ff2a4d; }
+.joker-tip--maldito.joker-tip--abajo::before { border-bottom-color: #ff2a4d; }
+.joker-tip--maldito.joker-tip--arriba::before { border-top-color: #ff2a4d; }
+.joker-tip--maldito .joker-tip-nombre { color: #ff5a6a; }
+
+.joker-tip-venta {
+    margin-top: 6px;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    color: #ff9bb0;
+}
+
+/* Aura malvada: halo pulsante rojo/morado detrás del comodín */
+.joker-maldito {
+    position: relative;
+    isolation: isolate;
+}
+
+.joker-maldito::before {
+    content: '';
+    position: absolute;
+    inset: -28%;
+    z-index: -1;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(255, 30, 70, 0.7) 0%, rgba(120, 0, 170, 0.5) 42%, transparent 70%);
+    animation: auraMaldita 2.4s ease-in-out infinite;
+}
+
+.joker-maldito::after {
+    content: '';
+    position: absolute;
+    inset: -4%;
+    z-index: -1;
+    border-radius: 6px;
+    pointer-events: none;
+    box-shadow: 0 0 12px 3px rgba(255, 40, 80, 0.9), 0 0 28px 8px rgba(150, 0, 220, 0.6);
+    animation: auraParpadeo 1.3s steps(2, end) infinite alternate;
+}
+
+/* borde rojo en vez del rosa de los comodines normales */
+.joker-maldito > div { border-color: #ff2a4d !important; }
+
+@keyframes auraMaldita {
+    0%, 100% { transform: scale(0.9); opacity: 0.65; }
+    50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes auraParpadeo {
+    from { opacity: 0.55; }
+    to { opacity: 1; }
+}
+
+.joker-etiqueta-maldito {
+    padding: 0 8px 1px;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    color: #fff;
+    background: #8f1119;
+    border: 2px solid #ff2a4d;
+    border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .joker-maldito::before,
+    .joker-maldito::after { animation: none; }
 }

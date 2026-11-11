@@ -15,9 +15,12 @@ interface JokerTipProps {
  */
 export function JokerTip({ comodin, extra, lado = 'abajo' }: JokerTipProps) {
     return (
-        <div className={`joker-tip joker-tip--${lado}`} role="tooltip">
+        <div className={`joker-tip joker-tip--${lado}${comodin.maldito ? ' joker-tip--maldito' : ''}`} role="tooltip">
             <div className="joker-tip-nombre">{comodin.nombre}</div>
             <div className="joker-tip-descripcion">{comodin.descripcion}</div>
+            {comodin.descripcionVenta && (
+                <div className="joker-tip-venta">☠ Al venderlo: {comodin.descripcionVenta}</div>
+            )}
             {extra && <div className="joker-tip-extra">{extra}</div>}
         </div>
     );

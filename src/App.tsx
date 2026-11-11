@@ -6,10 +6,11 @@ import { PantallaFin } from './components/PantallaFin';
 import { Tienda } from './components/Store';
 import { Lobby } from './components/Lobby';
 import { PlayedHandAnimation } from './components/PlayedHandAnimation';
+import { CursedEventOverlay } from './components/CursedEventOverlay';
 import { RoundStatsModal } from './components/RoundStatsModal';
 import { getSocket } from './services/socketService';
-import { evaluarMano } from './logic/HandEvaluator';
 import { JokerTip } from './components/JokerTip';
+import { etiquetasEfectoComodin } from './logic/HandEvaluator';
 import type { GameMode, NetworkPlayer } from './types/multiplayerType';
 import {
   useGameState,
@@ -80,7 +81,6 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
     monedas,
     vidasCorazones,
     comodinesEquipados,
-    totalCartasDescartadas,
     mostrarTienda,
     mostrarResumenRonda,
     resumenRondaData,
@@ -95,6 +95,7 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
     costoRerollActual,
     rematchListo,
     jugadaAnimada,
+    eventoMaldito,
     resultadosTablaFin,
     alternarSeleccion,
     descartarCartas,
@@ -135,19 +136,6 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
   const cartasSeleccionadas = mano.filter(c => c.seleccionada);
   const cartasSeleccionadasCount = cartasSeleccionadas.length;
 
-  // Clave estable basada en las cartas seleccionadas, para no recalcular el puntaje
-  // en cada render si la selección no cambió.
-  const seleccionKey = cartasSeleccionadas.map(c => `${c.valor}${c.palo}`).join(',');
-
-  const resultadoScoring = useMemo(
-    () =>
-      evaluarMano(cartasSeleccionadas, comodinesEquipados, {
-        monedas,
-        totalDescartes: totalCartasDescartadas,
-      }),
-    [seleccionKey, comodinesEquipados, monedas, totalCartasDescartadas]
-  );
-
   const faseLabel = derrota
     ? '💀 DERROTA'
     : juegoTerminado
@@ -156,7 +144,12 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
     ? '⏳ ESPERANDO OPONENTES'
     : 'INTERCAMBIO';
 
-  const hayJugada = cartasSeleccionadasCount > 0;
+  // Paso de la animación que está activo ahora mismo (si hay jugada animándose)
+  const pasoActivo =
+    jugadaAnimada && !jugadaAnimada.mostrarTotal
+      ? jugadaAnimada.resultado.pasos[jugadaAnimada.pasoActual]
+      : undefined;
+  const pasoComodin = pasoActivo?.tipo === 'comodin' ? pasoActivo : undefined;
   const esMultijugador = modoJuego === 'multiplayer';
 
   const handleStartSolo = () => {
@@ -203,6 +196,7 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
 
   return (
     <div className="mesa">
+      {eventoMaldito && <CursedEventOverlay key={eventoMaldito.clave} evento={eventoMaldito} />}
 
       {/* OVERLAY DE ESPERA DE OPONENTES AL TERMINAR MANOS */}
       {esperandoOponentes && !mostrarResumenRonda && (
@@ -283,18 +277,16 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
         </div>
 
         <div className="mesa-bloque mesa-jugada">
-          <div className="mesa-jugada-nombre">{hayJugada ? resultadoScoring.nombreMano : '—'}</div>
-          <div className="mesa-formula">
-            <span className="mesa-formula-fichas">{resultadoScoring.fichasTotales}</span>
-            <span className="mesa-formula-x">×</span>
-            <span className="mesa-formula-mult">{resultadoScoring.mult}</span>
+          <div className="mesa-jugada-nombre">
+            {jugadaAnimada ? jugadaAnimada.resultado.nombreMano : '—'}
           </div>
-          <div className="mesa-jugada-total">= {resultadoScoring.puntajeFinal}</div>
-          <div className="mesa-jugada-detalle">
-            Base {resultadoScoring.fichasBase} · Cartas +{resultadoScoring.fichasCartas}
-            {resultadoScoring.fichasComodines > 0 && ` · Comodines +${resultadoScoring.fichasComodines}`}
-            {resultadoScoring.multComodines > 0 && ` · Mult +${resultadoScoring.multComodines}`}
-            {(resultadoScoring.xMultComodines ?? 1) > 1 && ` · ×${resultadoScoring.xMultComodines}`}
+          <div className="mesa-formula">
+            <span className="mesa-formula-fichas">{jugadaAnimada ? jugadaAnimada.fichas : 0}</span>
+            <span className="mesa-formula-x">×</span>
+            <span className="mesa-formula-mult">{jugadaAnimada ? jugadaAnimada.mult : 0}</span>
+          </div>
+          <div className="mesa-jugada-total">
+            {jugadaAnimada?.mostrarTotal ? `= ${jugadaAnimada.resultado.puntajeFinal}` : '='}
           </div>
         </div>
 
@@ -390,11 +382,21 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
 
               const seleccionado = comodin.id === comodinSeleccionadoId;
               const valorVenta = Math.floor(comodin.costo * PORCENTAJE_VENTA);
+              const activo = pasoComodin?.comodinId === comodin.id;
 
               return (
                 <div key={comodin.id} className="mesa-slot joker-tip-anclaje">
+                  {activo && pasoComodin && (
+                    <div className="joker-popups">
+                      {etiquetasEfectoComodin(pasoComodin).map((e) => (
+                        <span key={e.texto} className={`joker-popup joker-popup--${e.tipo}`}>
+                          {e.texto}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div
-                    className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}`}
+                    className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}${activo ? ' mesa-joker--activo' : ''}${comodin.maldito ? ' joker-maldito' : ''}`}
                     onClick={() => toggleSeleccionVenta(comodin.id)}
                   >
                     <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />

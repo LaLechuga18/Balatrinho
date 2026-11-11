@@ -1,5 +1,22 @@
 import type { CardData } from '../types/gameType';
 
+export const PORCENTAJE_VENTA = 0.4; // 40% del costo original
+const PESO_MALDITO = 0.25; // probabilidad relativa en la tienda (1 = normal)
+
+export type EfectoAlVender = 'destruir-joker-oponentes' | 'tirar-dado' | 'destruir-mas-barato';
+
+export type EventoMaldito =
+  | {
+      efecto: 'tirar-dado';
+      vendedorNombre: string;
+      resultados: { playerId: string; name: string; tirada: number }[];
+    }
+  | {
+      efecto: 'destruir-joker-oponentes' | 'destruir-mas-barato';
+      vendedorNombre: string;
+      afectados: { playerId: string; jugador: string; jokerId: string; nombre: string }[];
+    };
+
 /**
  * Efecto que un comodín aplica al puntaje de una mano.
  * - fichasExtra: se suma a las fichas ANTES de multiplicar.
@@ -32,6 +49,18 @@ export interface Comodin {
   descripcion: string;
   costo: number;
   imagen?: string;
+  /** Texto del efecto al venderlo (se muestra en el tooltip). */
+  descripcionVenta?: string;
+  /** Es un Cursed Joker: aura roja y poca probabilidad en la tienda. */
+  maldito?: boolean;
+  /** Peso en el sorteo de la tienda (por defecto 1). */
+  peso?: number;
+  /** Factor sobre las ganancias de monedas (0.5 = la mitad). */
+  multiplicadorGanancias?: number;
+  /** Monedas que pierdes al terminar cada ronda. */
+  costoFinRonda?: number;
+  /** Efecto al venderlo. */
+  alVender?: EfectoAlVender;
   calcularEfecto: (ctx: ContextoEfecto) => EfectoComodin;
 }
 
@@ -45,7 +74,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'El Rey',
     descripcion: 'Cada Rey que puntúe otorga +50 fichas.',
     costo: 5,
-    imagen: '/jokers/rey.png',
+    imagen: '/frames/jokers/Baron.webp',
     calcularEfecto: ({ cartasPuntuables }) => {
       const reyes = cartasPuntuables.filter((c) => c.valor === 13).length;
       return { fichasExtra: reyes * 50, multExtra: 0, xMult: 1 };
@@ -56,7 +85,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Maestro de Espadas',
     descripcion: 'Cada carta de Espadas que puntúe otorga +20 fichas.',
     costo: 5,
-    imagen: '/jokers/maestro-espadas.png',
+    imagen: '/frames/jokers/Arrowhead.png',
     calcularEfecto: ({ cartasPuntuables }) => {
       const espadas = cartasPuntuables.filter((c) => c.palo === 'Espadas').length;
       return { fichasExtra: espadas * 20, multExtra: 0, xMult: 1 };
@@ -67,7 +96,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Comodín',
     descripcion: '+1 al multiplicador de cualquier mano.',
     costo: 5,
-    imagen: '/jokers/comodin.png',
+    imagen: '/frames/jokers/Joker.webp',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 1, xMult: 1 }),
   },
 
@@ -85,7 +114,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Cavendish',
     descripcion: 'x3 al multiplicador.',
     costo: 5,
-    imagen: '/jokers/cavendish.png',
+    imagen: '/frames/jokers/Cavendish.webp',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 0, xMult: 3 }),
   },
   {
@@ -93,7 +122,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Cara Feliz',
     descripcion: '+5 al multiplicador por cada figura (J, Q, K, A) que anote.',
     costo: 5,
-    imagen: '/jokers/cara-feliz.png',
+    imagen: '/frames/jokers/Smiley_Face.webp',
     calcularEfecto: ({ cartasPuntuables }) => {
       const figuras = cartasPuntuables.filter(esFigura).length;
       return { fichasExtra: 0, multExtra: figuras * 5, xMult: 1 };
@@ -104,7 +133,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Joker Alegre',
     descripcion: '+8 al multiplicador si la mano contiene una Pareja.',
     costo: 5,
-    imagen: '/jokers/joker-alegre.png',
+    imagen: '/frames/jokers/Jolly_Joker.webp',
     calcularEfecto: ({ tipoMano }) =>
       tipoMano === 'PAREJA' ? { fichasExtra: 0, multExtra: 8, xMult: 1 } : { fichasExtra: 0, multExtra: 0, xMult: 1 },
   },
@@ -113,7 +142,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Joker Chiflado',
     descripcion: '+12 al multiplicador si la mano contiene una Tercia.',
     costo: 5,
-    imagen: '/jokers/joker-chiflado.png',
+    imagen: '/frames/jokers/Zany_Joker.webp',
     calcularEfecto: ({ tipoMano }) =>
       tipoMano === 'TRIO' ? { fichasExtra: 0, multExtra: 12, xMult: 1 } : { fichasExtra: 0, multExtra: 0, xMult: 1 },
   },
@@ -122,7 +151,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Joker Demente',
     descripcion: '+10 al multiplicador si la mano contiene un Doble Par.',
     costo: 5,
-    imagen: '/jokers/joker-demente.png',
+    imagen: '/frames/jokers/Mad_Joker.webp',
     calcularEfecto: ({ tipoMano }) =>
       tipoMano === 'DOBLE_PAREJA' ? { fichasExtra: 0, multExtra: 10, xMult: 1 } : { fichasExtra: 0, multExtra: 0, xMult: 1 },
   },
@@ -131,7 +160,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Joker Loco',
     descripcion: '+12 al multiplicador si la mano contiene una Escalera.',
     costo: 5,
-    imagen: '/jokers/joker-loco.png',
+    imagen: '/frames/jokers/Crazy_Joker.webp',
     calcularEfecto: ({ tipoMano }) =>
       tipoMano === 'ESCALERA' ? { fichasExtra: 0, multExtra: 12, xMult: 1 } : { fichasExtra: 0, multExtra: 0, xMult: 1 },
   },
@@ -140,7 +169,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Joker Gracioso',
     descripcion: '+10 al multiplicador si la mano contiene un Color.',
     costo: 5,
-    imagen: '/jokers/joker-gracioso.png',
+    imagen: '/frames/jokers/Droll_Joker.webp',
     calcularEfecto: ({ tipoMano }) =>
       tipoMano === 'COLOR' ? { fichasExtra: 0, multExtra: 10, xMult: 1 } : { fichasExtra: 0, multExtra: 0, xMult: 1 },
   },
@@ -149,17 +178,17 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Jimbo',
     descripcion: '+4 al multiplicador en cualquier mano.',
     costo: 5,
-    imagen: '/jokers/jimbo.png',
+    imagen: '/frames/jokers/joker.webp',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 4, xMult: 1 }),
   },
 
   // ── Nuevos Comodines Solicitados ──────────────────────────────────────────
   {
     id: 'sebas-modo-horny',
-    nombre: 'Sebas Modo Horny',
+    nombre: 'Triboulet',
     descripcion: 'x2 al multiplicador por cada Rey y Reina que puntúe.',
     costo: 6,
-    imagen: '/jokers/sebas-modo-horny.png',
+    imagen: '/frames/jokers/Triboulet.webp',
     calcularEfecto: ({ cartasPuntuables }) => {
       const reyesYReinas = cartasPuntuables.filter((c) => c.valor === 12 || c.valor === 13).length;
       return {
@@ -174,7 +203,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Yorick',
     descripcion: '+x1 al multiplicador por cada 15 cartas descartadas en la partida.',
     costo: 8,
-    imagen: '/jokers/yorick.png',
+    imagen: '/frames/jokers/Yorick.webp',
     calcularEfecto: ({ totalDescartes }) => {
       const descartadas = totalDescartes ?? 0;
       const bonusXMult = Math.floor(descartadas / 15);
@@ -190,7 +219,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'La Bota Wey',
     descripcion: '+2 al multiplicador por cada moneda que tengas.',
     costo: 5,
-    imagen: '/jokers/la-bota-wey.png',
+    imagen: '/frames/jokers/Bootstraps.webp',
     calcularEfecto: ({ monedas }) => {
       const m = monedas ?? 0;
       return {
@@ -205,7 +234,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Fibonacci',
     descripcion: 'Cada As, 2, 3, 5 u 8 que anote otorga +8 al multiplicador.',
     costo: 6,
-    imagen: '/jokers/fibonacci.png',
+    imagen: '/frames/jokers/Fibonacci.webp',
     calcularEfecto: ({ cartasPuntuables }) => {
       const match = cartasPuntuables.filter((c) =>
         [14, 1, 2, 3, 5, 8].includes(c.valor)
@@ -222,7 +251,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Erudito',
     descripcion: 'Cada As que anote otorga +20 fichas y +4 al multiplicador.',
     costo: 5,
-    imagen: '/jokers/erudito.png',
+    imagen: '/frames/jokers/Scholar.webp',
     calcularEfecto: ({ cartasPuntuables }) => {
       const ases = cartasPuntuables.filter((c) => c.valor === 14 || c.valor === 1).length;
       return {
@@ -232,7 +261,99 @@ export const CATALOGO_COMODINES: Comodin[] = [
       };
     },
   },
+  // ── Cursed Jokers ─────────────────────────────────────────────────────────
+  {
+    id: 'la-muerte',
+    nombre: 'La Muerte',
+    descripcion: 'Tus manos obtienen -10 fichas.',
+    descripcionVenta: 'Destruye un Joker aleatorio de cada oponente.',
+    costo: 8,
+    imagen: '/frames/cursed_jokers/Mr._Bones.jpg',
+    maldito: true,
+    peso: PESO_MALDITO,
+    alVender: 'destruir-joker-oponentes',
+    calcularEfecto: () => ({ fichasExtra: -10, multExtra: 0, xMult: 1 }),
+  },
+  {
+    id: 'el-dado',
+    nombre: 'El Dado',
+    descripcion: 'Pierdes 🪙 2 al finalizar cada ronda.',
+    descripcionVenta:
+      'Todos tiran un dado. 1-2: pierden 50% de sus monedas. 3-4: pierden medio corazón. 5: ganan 🪙 5. 6: duplican sus monedas.',
+    costo: 6,
+    imagen: '/frames/cursed_jokers/D6.png',
+    maldito: true,
+    peso: PESO_MALDITO,
+    costoFinRonda: 2,
+    alVender: 'tirar-dado',
+    calcularEfecto: () => ({ fichasExtra: 0, multExtra: 0, xMult: 1 }),
+  },
+  {
+    id: 'joker-espacial',
+    nombre: 'Joker Espacial',
+    descripcion: 'Tus ganancias de monedas se reducen a la mitad.',
+    descripcionVenta: 'Todos pierden el Joker con menor precio de venta (empate: al azar).',
+    costo: 6,
+    imagen: '/frames/cursed_jokers/Space_joker.png',
+    maldito: true,
+    peso: PESO_MALDITO,
+    multiplicadorGanancias: 0.5,
+    alVender: 'destruir-mas-barato',
+    calcularEfecto: () => ({ fichasExtra: 0, multExtra: 0, xMult: 1 }),
+  },
 ];
+
+export const precioVentaComodin = (c: Comodin) => Math.floor(c.costo * PORCENTAJE_VENTA);
+
+/** Lo que se manda al servidor de cada comodín equipado. */
+export function datosComodin(c: Comodin) {
+  return {
+    id: c.id,
+    nombre: c.nombre,
+    imagen: c.imagen,
+    costo: c.costo,
+    precioVenta: precioVentaComodin(c),
+    multiplicadorGanancias: c.multiplicadorGanancias,
+    costoFinRonda: c.costoFinRonda,
+  };
+}
+
+/** Aplica los comodines que modifican las ganancias (Joker Espacial). */
+export function ajustarGanancia(equipados: Comodin[], monto: number): number {
+  const factor = equipados.reduce((acc, c) => acc * (c.multiplicadorGanancias ?? 1), 1);
+  return Math.floor(monto * factor);
+}
+
+/** Monedas que se pierden al final de cada ronda (El Dado). */
+export function costoFinDeRonda(equipados: Comodin[]): number {
+  return equipados.reduce((s, c) => s + (c.costoFinRonda ?? 0), 0);
+}
+
+/** Versión local (modo solo) de lo que en red decide el servidor. */
+export function generarEventoSolo(
+  efecto: EfectoAlVender,
+  restantes: Comodin[],
+  nombre: string
+): EventoMaldito {
+  if (efecto === 'tirar-dado') {
+    return {
+      efecto,
+      vendedorNombre: nombre,
+      resultados: [{ playerId: 'local', name: nombre, tirada: 1 + Math.floor(Math.random() * 6) }],
+    };
+  }
+  if (efecto === 'destruir-mas-barato' && restantes.length > 0) {
+    const min = Math.min(...restantes.map(precioVentaComodin));
+    const candidatos = restantes.filter((c) => precioVentaComodin(c) === min);
+    const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    return {
+      efecto,
+      vendedorNombre: nombre,
+      afectados: [{ playerId: 'local', jugador: nombre, jokerId: elegido.id, nombre: elegido.nombre }],
+    };
+  }
+  return { efecto, vendedorNombre: nombre, afectados: [] };
+}
 
 /** Suma los efectos de todos los comodines equipados. */
 export function acumularEfectos(
@@ -259,34 +380,22 @@ export function acumularEfectos(
   );
 }
 
-/**
- * Genera una oferta aleatoria de `cantidad` comodines que el jugador no tiene
- * equipados. Recibe un `semilla` (offset) para el re-roll: cicla el catálogo
- * disponible en lugar de quedarse sin opciones.
- */
 export function generarOfertaTienda(
   comodinesEquipados: Comodin[],
   cantidad: number,
-  semilla = 0
+  _semilla = 0
 ): Comodin[] {
+  void _semilla;
   const idsEquipados = new Set(comodinesEquipados.map((c) => c.id));
-  const disponibles = CATALOGO_COMODINES.filter((c) => !idsEquipados.has(c.id));
+  const pool = CATALOGO_COMODINES.filter((c) => !idsEquipados.has(c.id));
+  const oferta: Comodin[] = [];
 
-  if (disponibles.length === 0) return [];
-
-  // Fisher-Yates sobre una copia
-  const mezclados = [...disponibles];
-  for (let i = mezclados.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [mezclados[i], mezclados[j]] = [mezclados[j], mezclados[i]];
+  while (oferta.length < cantidad && pool.length > 0) {
+    const total = pool.reduce((s, c) => s + (c.peso ?? 1), 0);
+    let r = Math.random() * total;
+    let idx = pool.findIndex((c) => (r -= c.peso ?? 1) <= 0);
+    if (idx < 0) idx = pool.length - 1;
+    oferta.push(pool.splice(idx, 1)[0]);
   }
-
-  // El re-roll desplaza la ventana. Si se acaba el catálogo, cicla desde el principio.
-  const total = mezclados.length;
-  const inicio = (semilla * cantidad) % total;
-  const resultado: Comodin[] = [];
-  for (let i = 0; i < cantidad; i++) {
-    resultado.push(mezclados[(inicio + i) % total]);
-  }
-  return resultado;
+  return oferta;
 }

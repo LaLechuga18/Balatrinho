@@ -45,7 +45,7 @@ const MONEDAS_POR_100_PUNTOS = 1;
  * @property {boolean} roundFinished
  * @property {boolean} shopReady
  * @property {boolean} [rematchReady]
- * @property {Array<{id: string, nombre: string, imagen?: string}>} [jokers]
+ * @property {Array<{id: string, nombre: string, imagen?: string, precioVenta?: number, multiplicadorGanancias?: number, costoFinRonda?: number}>} [jokers]
  */
 
 /**
@@ -239,6 +239,52 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('cursed_sell', ({ efecto } = {}) => {
+    if (!currentRoomCode) return;
+    const room = rooms.get(currentRoomCode);
+    if (!room || (room.state !== 'playing' && room.state !== 'shop')) return;
+    const vendedor = room.players.find((p) => p.id === socket.id);
+    if (!vendedor) return;
+
+    const vivos = room.players.filter((p) => p.isAlive);
+    const azar = (n) => Math.floor(Math.random() * n);
+
+    // Quita un joker del jugador y devuelve a quién se lo quitó
+    const quitarJoker = (p, elegir) => {
+      const lista = p.jokers || [];
+      if (lista.length === 0) return null;
+      const j = elegir(lista);
+      p.jokers = lista.filter((x) => x !== j);
+      return { playerId: p.id, jugador: p.name, jokerId: j.id, nombre: j.nombre };
+    };
+
+    if (efecto === 'destruir-joker-oponentes') {
+      const afectados = vivos
+        .filter((p) => p.id !== socket.id)
+        .map((p) => quitarJoker(p, (l) => l[azar(l.length)]))
+        .filter(Boolean);
+      io.to(room.code).emit('cursed_effect', { efecto, vendedorNombre: vendedor.name, afectados });
+    } else if (efecto === 'destruir-mas-barato') {
+      const afectados = vivos
+        .map((p) =>
+          quitarJoker(p, (l) => {
+            const min = Math.min(...l.map((j) => j.precioVenta ?? 0));
+            const empate = l.filter((j) => (j.precioVenta ?? 0) === min);
+            return empate[azar(empate.length)];
+          })
+        )
+        .filter(Boolean);
+      io.to(room.code).emit('cursed_effect', { efecto, vendedorNombre: vendedor.name, afectados });
+    } else if (efecto === 'tirar-dado') {
+      const resultados = vivos.map((p) => {
+        const tirada = 1 + azar(6);
+        if (tirada === 3 || tirada === 4) p.hp = Math.max(1, p.hp - 1); // medio corazón
+        return { playerId: p.id, name: p.name, tirada };
+      });
+      io.to(room.code).emit('cursed_effect', { efecto, vendedorNombre: vendedor.name, resultados });
+    }
+  });
+
   function resolveRoundForRoom(room) {
     const activePlayers = room.players.filter((p) => p.isAlive);
     // 1. Sort active players by round score descending
@@ -271,8 +317,12 @@ io.on('connection', (socket) => {
 
       const monedasPos = MONEDAS_POR_POSICION[Math.min(rank - 1, MONEDAS_POR_POSICION.length - 1)];
       const monedasPuntos = Math.floor(p.currentRoundScore / 100) * MONEDAS_POR_100_PUNTOS;
-      const totalMonedasGanadas = monedasPos + monedasPuntos;
-      p.coins += totalMonedasGanadas;
+      const jokersJugador = p.jokers || [];
+      const factorGanancias = jokersJugador.reduce((a, j) => a * (j.multiplicadorGanancias ?? 1), 1);
+      const costoFin = jokersJugador.reduce((s, j) => s + (j.costoFinRonda ?? 0), 0);
+      // Puede ser negativo (El Dado); el cliente nunca baja de 0 monedas
+      const totalMonedasGanadas = Math.floor((monedasPos + monedasPuntos) * factorGanancias) - costoFin;
+      p.coins = Math.max(0, p.coins + totalMonedasGanadas);
 
       resolutionResults.push({
         playerId: p.id,

@@ -91,10 +91,11 @@ export function Tienda({
                       className={`shop-carta joker-tip-anclaje${yaEquipado ? ' shop-carta--equipada' : ''}`}
                     >
                       <div className="shop-precio">🪙 {comodin.costo}</div>
-                      <div className="shop-joker">
+                      <div className={`shop-joker${comodin.maldito ? ' joker-maldito' : ''}`}>
                         <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
                       </div>
                       <span className="shop-carta-nombre">{comodin.nombre}</span>
+                      {comodin.maldito && <span className="joker-etiqueta-maldito">☠ MALDITO</span>}
                       <button
                         className="shop-btn-comprar"
                         onClick={() => onComprar(comodin)}
@@ -133,7 +134,7 @@ export function Tienda({
 
               return (
                 <div key={comodin.id} className="shop-tuyo-slot joker-tip-anclaje">
-                  <div className="shop-mini">
+                  <div className={`shop-mini${comodin.maldito ? ' joker-maldito' : ''}`}>
                     <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
                   </div>
                   <span className="shop-tuyo-nombre">{comodin.nombre}</span>

@@ -1,10 +1,31 @@
 import type { CardData } from '../types/gameType';
 import { TIPOS_DE_MANO, type HandTypeInfo } from '../utils/handRules';
-import { acumularEfectos, type Comodin } from './jokers';
+import { type Comodin } from './jokers';
+
+export type PasoCarta = {
+  tipo: 'carta';
+  indiceCarta: number;
+  fichas: number;
+  fichasDespues: number;
+  multDespues: number;
+};
+
+export type PasoComodin = {
+  tipo: 'comodin';
+  comodinId: string;
+  fichasExtra: number;
+  multExtra: number;
+  xMult: number;
+  fichasDespues: number;
+  multDespues: number;
+};
+
+export type PasoPuntuacion = PasoCarta | PasoComodin;
 
 export interface ResultadoMano {
   nombreMano: string;
   fichasBase: number;
+  multBase: number;
   fichasCartas: number;
   fichasComodines: number; // fichas aportadas por los comodines equipados
   fichasTotales: number;
@@ -13,6 +34,16 @@ export interface ResultadoMano {
   xMultComodines?: number; // factor multiplicador de comodines
   puntajeFinal: number;
   cartasPuntuables: CardData[];
+  pasos: PasoPuntuacion[];
+}
+
+/** Textos que se muestran flotando sobre un comodín cuando se activa. */
+export function etiquetasEfectoComodin(p: PasoComodin) {
+  const out: { texto: string; tipo: 'fichas' | 'mult' | 'xmult' }[] = [];
+  if (p.fichasExtra) out.push({ texto: `${p.fichasExtra > 0 ? '+' : ''}${p.fichasExtra} FICHAS`, tipo: 'fichas' });
+  if (p.multExtra) out.push({ texto: `${p.multExtra > 0 ? '+' : ''}${p.multExtra} MULT`, tipo: 'mult' });
+  if (p.xMult > 1) out.push({ texto: `×${p.xMult} MULT`, tipo: 'xmult' });
+  return out;
 }
 
 export function obtenerFichasDeCarta(valor: number): number {
@@ -25,6 +56,7 @@ function resultadoVacio(): ResultadoMano {
   return {
     nombreMano: 'Ninguna',
     fichasBase: 0,
+    multBase: 0,
     fichasCartas: 0,
     fichasComodines: 0,
     fichasTotales: 0,
@@ -33,6 +65,7 @@ function resultadoVacio(): ResultadoMano {
     xMultComodines: 1,
     puntajeFinal: 0,
     cartasPuntuables: [],
+    pasos: [],
   };
 }
 
@@ -130,25 +163,65 @@ export function evaluarMano(
     0
   );
 
-  // Efectos de los comodines equipados, calculados sobre las cartas que puntúan
-  const efectoComodines = acumularEfectos(comodinesEquipados, cartasPuntuables, tipo, extraCtx);
+  // ── Pasos de puntuación (para la animación) ──
+  let fichasAcum = info.fichasBase;
+  let multAcum = info.multBase;
+  const pasos: PasoPuntuacion[] = [];
 
-  const fichasTotales = info.fichasBase + fichasCartas + efectoComodines.fichasExtra;
-  const multBaseSuma = info.multBase + efectoComodines.multExtra;
-  const xMult = efectoComodines.xMult ?? 1;
-  const multFinal = Math.max(1, Math.round(multBaseSuma * xMult));
-  const puntajeFinal = fichasTotales * multFinal;
+  // 1) Cartas que puntúan, de izquierda a derecha (como en Balatro)
+  cartasSeleccionadas.forEach((carta, indiceCarta) => {
+    if (!cartasPuntuables.includes(carta)) return;
+    const fichas = obtenerFichasDeCarta(carta.valor);
+    fichasAcum += fichas;
+    pasos.push({ tipo: 'carta', indiceCarta, fichas, fichasDespues: fichasAcum, multDespues: multAcum });
+  });
+
+  // 2) Comodines, en el orden en que están equipados
+  let fichasComodines = 0;
+  let multComodines = 0;
+  let xMultTotal = 1;
+  for (const comodin of comodinesEquipados) {
+    const ef = comodin.calcularEfecto({
+      cartasPuntuables,
+      tipoMano: tipo,
+      monedas: extraCtx?.monedas ?? 0,
+      totalDescartes: extraCtx?.totalDescartes ?? 0,
+    });
+    const fichasExtra = ef.fichasExtra || 0;
+    const multExtra = ef.multExtra || 0;
+    const xMult = ef.xMult ?? 1;
+    if (fichasExtra === 0 && multExtra === 0 && xMult === 1) continue; // no se activó
+
+    fichasAcum = Math.max(0, fichasAcum + fichasExtra);
+    multAcum = (multAcum + multExtra) * xMult;
+    fichasComodines += fichasExtra;
+    multComodines += multExtra;
+    xMultTotal *= xMult;
+    pasos.push({
+      tipo: 'comodin',
+      comodinId: comodin.id,
+      fichasExtra,
+      multExtra,
+      xMult,
+      fichasDespues: fichasAcum,
+      multDespues: multAcum,
+    });
+  }
+
+  const multFinal = Math.max(1, Math.round(multAcum));
 
   return {
     nombreMano: info.nombre,
     fichasBase: info.fichasBase,
+    multBase: info.multBase,
     fichasCartas,
-    fichasComodines: efectoComodines.fichasExtra,
-    fichasTotales,
+    fichasComodines,
+    fichasTotales: fichasAcum,
     mult: multFinal,
-    multComodines: efectoComodines.multExtra,
-    xMultComodines: xMult,
-    puntajeFinal,
+    multComodines,
+    xMultComodines: xMultTotal,
+    puntajeFinal: fichasAcum * multFinal,
     cartasPuntuables,
+    pasos,
   };
 }
