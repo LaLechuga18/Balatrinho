@@ -3,6 +3,9 @@ import { MenuBackground, MenuLogo } from './MenuDecor';
 // Versión que se muestra en la esquina del menú
 const GAME_VERSION = '0.1.0-dev';
 
+// En la app de escritorio (Tauri) no hay servidor, así que solo se ofrece el juego local.
+const ES_APP_ESCRITORIO = '__TAURI_INTERNALS__' in window;
+
 interface MainMenuProps {
     onPlayLocal: () => void;
     onPlayOnline: () => void;
@@ -23,12 +26,16 @@ export function MainMenu({ onPlayLocal, onPlayOnline, onPlayLan }: MainMenuProps
                     <button className="menu-button menu-button--blue" onClick={onPlayLocal}>
                         JUEGO LOCAL
                     </button>
-                    <button className="menu-button menu-button--gold" onClick={onPlayOnline}>
-                        JUEGO ONLINE
-                    </button>
-                    <button className="menu-button menu-button--gold" onClick={onPlayLan}>
-                        JUEGO EN LAN
-                    </button>
+                    {!ES_APP_ESCRITORIO && (
+                        <>
+                            <button className="menu-button menu-button--gold" onClick={onPlayOnline}>
+                                JUEGO ONLINE
+                            </button>
+                            <button className="menu-button menu-button--gold" onClick={onPlayLan}>
+                                JUEGO EN LAN
+                            </button>
+                        </>
+                    )}
                 </nav>
             </main>
         </div>
