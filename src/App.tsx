@@ -150,7 +150,6 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
       ? jugadaAnimada.resultado.pasos[jugadaAnimada.pasoActual]
       : undefined;
   const pasoComodin = pasoActivo?.tipo === 'comodin' ? pasoActivo : undefined;
-  const esMultijugador = modoJuego === 'multiplayer';
 
   const handleStartSolo = () => {
     setMiNombre('TÚ');
@@ -318,10 +317,10 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
                 <CorazonVida key={i} estado={estado} />
               ))}
             </span>
-            {esMultijugador && <span className="mesa-jugador-pts">{puntajeRonda} pts</span>}
+            {oponentes.length > 0 && <span className="mesa-jugador-pts">{puntajeRonda} pts</span>}
           </div>
 
-          {esMultijugador && oponentes.length > 0 ? (
+          {oponentes.length > 0 ? (
             oponentes.map((op) => (
               <div
                 key={op.id}

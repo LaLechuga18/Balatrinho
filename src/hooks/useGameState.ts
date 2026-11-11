@@ -11,12 +11,21 @@ import {
   generarOfertaTienda,
   generarEventoSolo,
   ajustarGanancia,
-  costoFinDeRonda,
   datosComodin,
   PORCENTAJE_VENTA,
   type Comodin,
   type EventoMaldito,
 } from '../logic/jokers';
+import {
+  crearBots,
+  planearRonda,
+  comprarComodinesBot,
+  botANetworkPlayer,
+  puntajeRondaBot,
+  resolverRonda,
+  type Bot,
+  type ConfigBots,
+} from '../logic/bots';
 import { sonidoJugar, sonidoPunto } from '../services/Sounds';
 import { getSocket } from '../services/socketService';
 
@@ -33,10 +42,16 @@ export const INCREMENTO_REROLL = 2;
 export const COSTO_REROLL = 3;
 export { PORCENTAJE_VENTA };
 
-// Monedas base por posición al terminar la ronda (índice 0 = 1er lugar)
-const MONEDAS_POR_POSICION = [5, 4, 3, 1] as const;
-// Monedas extra por cada 100 puntos de puntaje en la ronda
-const MONEDAS_POR_100_PUNTOS = 1;
+// Reglas que usan los bots del modo local
+const CONFIG_BOTS: ConfigBots = {
+  cartasPorRonda: CARTAS_POR_RONDA,
+  maxDescartes: MAX_DESCARTES_POR_RONDA,
+  maxManos: MAX_MANOS_POR_RONDA,
+  maxSeleccion: MAX_SELECCION,
+  maxComodines: MAX_COMODINES,
+  comodinesEnOferta: COMODINES_EN_OFERTA,
+  vidaInicialHp: VIDAS_INICIALES * 2,
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function conteoDesde(mazo: DeckManager): Record<Palo, number> {
@@ -89,8 +104,13 @@ export function useGameState(props?: UseGameStateProps) {
   const [mostrarResumenRonda, setMostrarResumenRonda] = useState<boolean>(false);
   const [resumenRondaData, setResumenRondaData] = useState<RoundStatsInfo | null>(null);
 
+  // ─── Bots (solo modo local) ──────────────────────────────────────────────────
+  const [botsInicial] = useState<Bot[]>(() => (esMultiplayer ? [] : crearBots(CONFIG_BOTS)));
+  const botsRef = useRef<Bot[]>(botsInicial);
+
   // ─── Estado multijugador ─────────────────────────────────────────────────────
-  const [oponentes, setOponentes] = useState<NetworkPlayer[]>([]);
+  // En modo local los oponentes son los bots.
+  const [oponentes, setOponentes] = useState<NetworkPlayer[]>(() => botsInicial.map(botANetworkPlayer));
   const [esperandoOponentes, setEsperandoOponentes] = useState<boolean>(false);
   const [esperandoSiguienteRonda, setEsperandoSiguienteRonda] = useState<boolean>(false);
   const [costoRerollActual, setCostoRerollActual] = useState<number>(COSTO_REROLL_BASE);
@@ -118,6 +138,11 @@ export function useGameState(props?: UseGameStateProps) {
   const derrota = vidasHp <= 0;
 
   // ─── Helpers internos ───────────────────────────────────────────────────────
+  const sincronizarBots = useCallback((bots: Bot[]) => {
+    botsRef.current = bots;
+    setOponentes(bots.map(botANetworkPlayer));
+  }, []);
+
   const agregarHistorial = useCallback((descripcion: string, ronda: number) => {
     setHistorial(prev => [{ ronda, descripcion }, ...prev].slice(0, 20));
   }, []);
@@ -557,6 +582,12 @@ export function useGameState(props?: UseGameStateProps) {
           });
         }
       } else {
+        // Los bots avanzan una mano al ritmo del jugador
+        sincronizarBots(
+          botsRef.current.map(b =>
+            b.vivo ? { ...b, manosJugadas: Math.min(b.manosJugadas + 1, b.plan.length) } : b
+          )
+        );
         if (manosQueQuedan === 0) {
           terminarRondaSolo(nuevoPuntajeRonda, nuevoPuntajeTotal);
         }
@@ -567,45 +598,90 @@ export function useGameState(props?: UseGameStateProps) {
     programar(t, finalizar);
   };
 
+  /** Resuelve la ronda del modo local contra los bots (mismas reglas que el servidor). */
   const terminarRondaSolo = (puntajeDeRonda: number, nuevoTotal: number) => {
-    const monedasPosicion = MONEDAS_POR_POSICION[0];
-    const monedasPuntos = Math.floor(puntajeDeRonda / 100) * MONEDAS_POR_100_PUNTOS;
-    const monedasGanadas = ajustarGanancia(comodinesEquipados, monedasPosicion + monedasPuntos);
-    const costoFin = costoFinDeRonda(comodinesEquipados);
-    const nuevoTotalMonedas = Math.max(0, monedas + monedasGanadas - costoFin);
-    const neto = nuevoTotalMonedas - monedas;
+    const bots = botsRef.current;
+    const nombre = nombreJugador || 'TÚ';
+
+    const resultados = resolverRonda([
+      {
+        id: 'local',
+        name: nombre,
+        hp: vidasHp,
+        monedas,
+        vivo: true,
+        puntajeRonda: puntajeDeRonda,
+        comodines: comodinesEquipados,
+      },
+      ...bots.map(b => ({
+        id: b.id,
+        name: b.nombre,
+        hp: b.hp,
+        monedas: b.monedas,
+        vivo: b.vivo,
+        puntajeRonda: puntajeRondaBot(b),
+        comodines: b.comodines,
+      })),
+    ]);
+
+    const mio = resultados.find(r => r.playerId === 'local')!;
+    const nuevosBots = bots.map(b => {
+      const r = resultados.find(x => x.playerId === b.id);
+      if (!r) return b;
+      return {
+        ...b,
+        hp: r.newHp,
+        vivo: r.isAlive,
+        monedas: r.totalCoins ?? b.monedas,
+        puntajeTotal: b.puntajeTotal + r.roundScore,
+      };
+    });
+    sincronizarBots(nuevosBots);
+
+    const nuevoTotalMonedas = mio.totalCoins ?? monedas;
+    setVidasHp(mio.newHp);
     setMonedas(nuevoTotalMonedas);
 
-    const detalle = `+${monedasGanadas}🪙${costoFin > 0 ? ` -${costoFin}🪙 (maldición)` : ''}`;
+    const esFinJuego = !mio.isAlive || nuevosBots.every(b => !b.vivo);
+    if (esFinJuego) {
+      setResultadosTablaFin([
+        { nombre, puntaje: nuevoTotal, eresTu: true },
+        ...nuevosBots.map(b => ({ nombre: b.nombre, puntaje: b.puntajeTotal, eresTu: false })),
+      ]);
+    }
+
+    const detalleDanio = mio.damage > 0 ? ` 💔 Recibiste -${mio.damage / 2} corazón` : ' 🛡️ ¡Sin daño!';
     agregarHistorial(
-      `Fin de ronda ${rondaActual}. Puntaje: ${puntajeDeRonda}. ${detalle}`,
+      `Fin ronda ${rondaActual}. Puesto #${mio.rank}. ${mio.coinsEarned >= 0 ? '+' : ''}${mio.coinsEarned}🪙.${detalleDanio}`,
       rondaActual
     );
 
-    const statsSolo: PlayerRoundStat[] = [{
-      id: 'local',
-      name: nombreJugador || 'TÚ',
-      roundScore: puntajeDeRonda,
-      totalScore: nuevoTotal,
-      rank: 1,
-      damage: 0,
-      hp: vidasHp,
-      coinsEarned: neto,
-      totalCoins: nuevoTotalMonedas,
-      isAlive: true,
-      eresTu: true,
-      jokers: comodinesEquipados.map(datosComodin),
-    }];
+    const stats: PlayerRoundStat[] = resultados.map(r => ({
+      id: r.playerId,
+      name: r.name,
+      roundScore: r.roundScore,
+      totalScore: r.playerId === 'local'
+        ? nuevoTotal
+        : (nuevosBots.find(b => b.id === r.playerId)?.puntajeTotal ?? r.roundScore),
+      rank: r.rank,
+      damage: r.damage,
+      hp: r.newHp,
+      coinsEarned: r.coinsEarned,
+      totalCoins: r.totalCoins ?? 0,
+      isAlive: r.isAlive,
+      eresTu: r.playerId === 'local',
+      jokers: r.jokers ?? [],
+    }));
 
     setResumenRondaData({
       ronda: rondaActual,
-      stats: statsSolo,
-      tuDanio: 0,
+      stats,
+      tuDanio: mio.damage,
       tuPuntaje: puntajeDeRonda,
-      tusMonedasGanadas: neto,
+      tusMonedasGanadas: mio.coinsEarned,
       tusMonedasTotales: nuevoTotalMonedas,
-      tusVidasRestantes: vidasHp / 2,
-      esFinJuego: false,
+      tusVidasRestantes: mio.newHp / 2,
+      esFinJuego,
     });
     setMostrarResumenRonda(true);
   };
@@ -669,6 +745,12 @@ export function useGameState(props?: UseGameStateProps) {
         jokers: comodinesEquipados.map(datosComodin),
       });
     } else {
+      // Los bots compran en la tienda y planean su siguiente ronda
+      sincronizarBots(
+        botsRef.current.map(b =>
+          b.vivo ? planearRonda(comprarComodinesBot(b, CONFIG_BOTS), CONFIG_BOTS) : b
+        )
+      );
       setMostrarTienda(false);
       setMano(repartirRonda());
       setDescartesRestantes(MAX_DESCARTES_POR_RONDA);
@@ -715,7 +797,9 @@ export function useGameState(props?: UseGameStateProps) {
     setJugadaAnimada(null);
     setRematchListo(false);
     setMostrarFinPartida(false);
-  }, []);
+    setResultadosTablaFin([]);
+    sincronizarBots(crearBots(CONFIG_BOTS));
+  }, [sincronizarBots]);
 
   const pedirRevancha = () => {
     if (esMultiplayer) {
