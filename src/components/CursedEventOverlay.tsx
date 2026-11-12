@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ComodinImagen } from './JokersImage';
-import { CATALOGO_COMODINES, type Comodin, type EventoMaldito } from '../logic/jokers';
+import { ManoEventOverlay } from './ManoEventOverlay';
+import { CATALOGO_COMODINES, type Comodin, type EventoMaldito, type EventoMano } from '../logic/jokers';
 import { sonidoGolpe, sonidoDestruir } from '../services/Sounds';
 import './CursedEventOverlay.css';
 
 /** Evento del servidor + datos para mostrarlo. */
 export type EventoVisual = EventoMaldito & { miId: string; clave: number };
+type EventoClasicoVisual = Exclude<EventoMaldito, EventoMano> & { miId: string; clave: number };
 
 // Posición de los puntos de cada cara del dado (cuadrícula 3x3, índices 0-8)
 const PUNTOS: Record<number, number[]> = {
@@ -73,7 +75,7 @@ function jokerDeCatalogo(id: string, nombre: string): Comodin {
     );
 }
 
-export function CursedEventOverlay({ evento }: { evento: EventoVisual }) {
+function EventoClasico({ evento }: { evento: EventoClasicoVisual }) {
     // Sonido de la rotura de comodines
     useEffect(() => {
         if (evento.efecto === 'tirar-dado') return;
@@ -144,4 +146,9 @@ export function CursedEventOverlay({ evento }: { evento: EventoVisual }) {
             </div>
         </div>
     );
+}
+
+export function CursedEventOverlay({ evento }: { evento: EventoVisual }) {
+    if (evento.efecto === 'evento-aleatorio') return <ManoEventOverlay evento={evento} />;
+    return <EventoClasico evento={evento} />;
 }

@@ -282,6 +282,63 @@ io.on('connection', (socket) => {
         return { playerId: p.id, name: p.name, tirada };
       });
       io.to(room.code).emit('cursed_effect', { efecto, vendedorNombre: vendedor.name, resultados });
+    } else if (efecto === 'evento-aleatorio') {
+      const opciones = ['bancarrota', 'jackpot', 'sacrificio'];
+      if (vivos.length >= 2) opciones.push('revolucion', 'caos');
+      const evento = opciones[azar(opciones.length)];
+      const base = { efecto, vendedorNombre: vendedor.name, evento };
+
+      if (evento === 'jackpot') {
+        const g = vivos[azar(vivos.length)];
+        io.to(room.code).emit('cursed_effect', { ...base, ganador: { playerId: g.id, name: g.name } });
+      } else if (evento === 'sacrificio') {
+        const afectados = vivos
+          .map((p) => quitarJoker(p, (l) => l[azar(l.length)]))
+          .filter(Boolean);
+        io.to(room.code).emit('cursed_effect', { ...base, afectados });
+      } else if (evento === 'revolucion') {
+        const orden = [...vivos].sort((a, b) => b.totalScore - a.totalScore);
+        const primero = orden[0];
+        const ultimo = orden[orden.length - 1];
+        const cambiaRonda = room.state === 'playing';
+        const intercambio = {
+          primeroId: primero.id, primeroNombre: primero.name,
+          ultimoId: ultimo.id, ultimoNombre: ultimo.name,
+          totalPrimero: primero.totalScore, totalUltimo: ultimo.totalScore,
+          rondaPrimero: primero.currentRoundScore, rondaUltimo: ultimo.currentRoundScore,
+          cambiaRonda,
+        };
+        [primero.totalScore, ultimo.totalScore] = [ultimo.totalScore, primero.totalScore];
+        if (cambiaRonda) {
+          [primero.currentRoundScore, ultimo.currentRoundScore] =
+            [ultimo.currentRoundScore, primero.currentRoundScore];
+        }
+        io.to(room.code).emit('cursed_effect', { ...base, intercambio });
+      } else if (evento === 'caos') {
+        const cantidades = vivos.map((p) => (p.jokers || []).length);
+        const todos = vivos.flatMap((p) => p.jokers || []);
+        const repartir = () => {
+          const m = [...todos];
+          for (let i = m.length - 1; i > 0; i--) {
+            const j = azar(i + 1);
+            [m[i], m[j]] = [m[j], m[i]];
+          }
+          let k = 0;
+          return cantidades.map((n) => { const lote = m.slice(k, k + n); k += n; return lote; });
+        };
+        // Reintenta hasta que nadie quede con un comodín repetido
+        let lotes = null;
+        for (let i = 0; i < 30 && !lotes; i++) {
+          const c = repartir();
+          if (c.every((l) => new Set(l.map((j) => j.id)).size === l.length)) lotes = c;
+        }
+        if (!lotes) lotes = vivos.map((p) => p.jokers || []);
+        vivos.forEach((p, k) => { p.jokers = lotes[k]; });
+        const reparto = vivos.map((p, k) => ({ playerId: p.id, jugador: p.name, jokers: lotes[k] }));
+        io.to(room.code).emit('cursed_effect', { ...base, reparto });
+      } else {
+        io.to(room.code).emit('cursed_effect', base); // bancarrota: cada cliente aplica su -25%
+      }
     }
   });
 

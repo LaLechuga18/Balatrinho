@@ -819,3 +819,19 @@
     0%   { opacity: 0; transform: translateY(12px) scale(0.5); }
     100% { opacity: 1; transform: translateY(-8px) scale(1); }
 }
+
+/* Comodín que falla (La Mano) */
+.mesa-joker--fallo {
+    z-index: 6;
+    filter: grayscale(1) brightness(0.7);
+    animation: jokerFalla 0.5s ease-in-out;
+}
+@keyframes jokerFalla {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-7px) rotate(-4deg); }
+    40%  { transform: translateX(7px) rotate(4deg); }
+    60%  { transform: translateX(-5px) rotate(-2deg); }
+    80%  { transform: translateX(3px); }
+    100% { transform: translateX(0); }
+}
+.joker-popup--fallo { background: #4b5860; border-color: #aab4b9; }
