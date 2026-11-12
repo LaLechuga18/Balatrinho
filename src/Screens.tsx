@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import App from './App';
 import { MainMenu } from './components/MainMenu';
+import { MusicPlayer } from './components/MusicPlayer';
 import { setNetworkMode, type NetworkMode } from './services/socketService';
 
 type Screen = 'menu' | 'local' | NetworkMode;
@@ -18,19 +19,25 @@ export default function Screens() {
         setScreen(modo);
     };
 
+    let pantalla: ReactNode;
     if (screen === 'local') {
-        return <App modoInicial="solo" onVolverAlMenu={volverAlMenu} />;
-    }
-
-    if (screen === 'lan' || screen === 'online') {
-        return <App modoInicial="lobby" modoRed={screen} onVolverAlMenu={volverAlMenu} />;
+        pantalla = <App modoInicial="solo" onVolverAlMenu={volverAlMenu} />;
+    } else if (screen === 'lan' || screen === 'online') {
+        pantalla = <App modoInicial="lobby" modoRed={screen} onVolverAlMenu={volverAlMenu} />;
+    } else {
+        pantalla = (
+            <MainMenu
+                onPlayLocal={() => setScreen('local')}
+                onPlayOnline={() => abrirLobby('online')}
+                onPlayLan={() => abrirLobby('lan')}
+            />
+        );
     }
 
     return (
-        <MainMenu
-            onPlayLocal={() => setScreen('local')}
-            onPlayOnline={() => abrirLobby('online')}
-            onPlayLan={() => abrirLobby('lan')}
-        />
+        <>
+            <MusicPlayer />
+            {pantalla}
+        </>
     );
 }

@@ -62,6 +62,7 @@ export function Tienda({
 
             <button
               className="shop-btn shop-btn--verde"
+              data-sonido="monedas"
               onClick={onReroll}
               disabled={!puedeReroll}
               title={puedeReroll ? 'Ver otros comodines' : 'No tienes monedas suficientes'}
@@ -98,6 +99,7 @@ export function Tienda({
                       {comodin.maldito && <span className="joker-etiqueta-maldito">☠ MALDITO</span>}
                       <button
                         className="shop-btn-comprar"
+                        data-sonido="ninguno"
                         onClick={() => onComprar(comodin)}
                         disabled={!puedeComprar}
                       >
@@ -141,6 +143,7 @@ export function Tienda({
                   {onVender && (
                     <button
                       className="shop-btn-vender"
+                      data-sonido="ninguno"
                       onClick={() => onVender(comodin.id)}
                       disabled={esperandoSiguienteRonda}
                       title={`Vender por 🪙 ${valorVenta}`}

@@ -150,6 +150,7 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
       ? jugadaAnimada.resultado.pasos[jugadaAnimada.pasoActual]
       : undefined;
   const pasoComodin = pasoActivo?.tipo === 'comodin' ? pasoActivo : undefined;
+  const pasoFallo = pasoActivo?.tipo === 'fallo' ? pasoActivo : undefined;
 
   const handleStartSolo = () => {
     setMiNombre('TÚ');
@@ -382,9 +383,15 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
               const seleccionado = comodin.id === comodinSeleccionadoId;
               const valorVenta = Math.floor(comodin.costo * PORCENTAJE_VENTA);
               const activo = pasoComodin?.comodinId === comodin.id;
+              const fallo = pasoFallo?.comodinId === comodin.id;
 
               return (
                 <div key={comodin.id} className="mesa-slot joker-tip-anclaje">
+                  {fallo && (
+                    <div className="joker-popups">
+                      <span className="joker-popup joker-popup--fallo">¡FALLÓ!</span>
+                    </div>
+                  )}
                   {activo && pasoComodin && (
                     <div className="joker-popups">
                       {etiquetasEfectoComodin(pasoComodin).map((e) => (
@@ -395,13 +402,13 @@ function App({ modoInicial = 'lobby', modoRed = 'lan', onVolverAlMenu }: AppProp
                     </div>
                   )}
                   <div
-                    className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}${activo ? ' mesa-joker--activo' : ''}${comodin.maldito ? ' joker-maldito' : ''}`}
+                    className={`mesa-joker mesa-joker--lleno${seleccionado ? ' mesa-joker--seleccionado' : ''}${activo ? ' mesa-joker--activo' : ''}${fallo ? ' mesa-joker--fallo' : ''}${comodin.maldito ? ' joker-maldito' : ''}`}
                     onClick={() => toggleSeleccionVenta(comodin.id)}
                   >
                     <ComodinImagen comodin={comodin} ancho="100%" alto="100%" />
                   </div>
                   {seleccionado ? (
-                    <button className="mesa-btn-vender" onClick={() => confirmarVenta(comodin.id)}>
+                    <button className="mesa-btn-vender" data-sonido="ninguno" onClick={() => confirmarVenta(comodin.id)}>
                       Vender 🪙 {valorVenta}
                     </button>
                   ) : (

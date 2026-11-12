@@ -1,0 +1,266 @@
+/* ===== LA MANO ===== */
+.mano-panel { min-width: min(96vw, 720px); }
+
+.mano-ruleta {
+    --w: 124px;
+    --g: 14px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: var(--g);
+    padding-top: 104px;
+    margin-top: 4px;
+}
+.mano-ruleta--compacta { padding-top: 0; }
+
+.mano-opcion {
+    width: var(--w);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 6px 12px;
+    text-align: center;
+    background: #27131c;
+    border: 3px solid #5f2a3a;
+    border-radius: 12px;
+    transition: transform 0.12s, background 0.12s, border-color 0.12s, opacity 0.3s, filter 0.3s;
+}
+.mano-opcion-icono { font-size: 2.4rem; line-height: 1; }
+.mano-opcion-nombre { font-size: 1.25rem; letter-spacing: 0.06em; }
+.mano-opcion-desc { font-size: 0.95rem; line-height: 1.1; opacity: 0.7; }
+
+.mano-opcion--sel { background: #5f0a1f; border-color: #ffd36b; transform: translateY(6px); }
+.mano-opcion--elegida {
+    background: #8f1119;
+    border-color: #ffd36b;
+    box-shadow: 0 0 24px rgba(255, 211, 107, 0.7);
+    transform: scale(1.06);
+    animation: manoElegida 0.5s ease-out;
+}
+.mano-opcion--apagada { opacity: 0.25; filter: grayscale(1); }
+.mano-ruleta--compacta .mano-opcion--apagada { display: none; }
+.mano-ruleta--compacta .mano-opcion-desc { display: none; }
+
+@keyframes manoElegida {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.18); }
+    100% { transform: scale(1.06); }
+}
+
+/* La mano blanca */
+.mano-blanca {
+    position: absolute;
+    top: 0;
+    left: calc(var(--i) * (var(--w) + var(--g)) + var(--w) / 2);
+    width: 60px;
+    margin-left: -30px;
+    z-index: 3;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.4));
+    transition: left 0.08s linear, opacity 0.25s, transform 0.25s;
+}
+/* con el contenedor centrado, la posición base arranca en el borde izquierdo de la fila */
+.mano-ruleta .mano-blanca { margin-left: calc(50% - (5 * var(--w) + 4 * var(--g)) / 2 - 30px); }
+.mano-blanca--oculta { opacity: 0; transform: translateY(-40px); }
+.mano-svg { display: block; width: 100%; height: auto; }
+.mano-tap { animation: manoTap 0.2s ease-out; }
+.mano-blanca--golpe .mano-tap { animation: manoGolpe 0.5s ease-out both; }
+
+@keyframes manoTap {
+    0%   { transform: translateY(-8px); }
+    55%  { transform: translateY(12px); }
+    100% { transform: translateY(0); }
+}
+@keyframes manoGolpe {
+    0%   { transform: translateY(0); }
+    40%  { transform: translateY(-26px); }
+    70%  { transform: translateY(18px) scale(1.12); }
+    100% { transform: translateY(8px) scale(1.05); }
+}
+
+/* Escena */
+.mano-escena {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 6px;
+    animation: anuncioPop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.4) both;
+}
+.mano-anuncio {
+    padding: 3px 14px 5px;
+    font-size: 1.6rem;
+    text-align: center;
+    background: #8f1119;
+    border: 3px solid #ff5a6a;
+    border-radius: 8px;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+}
+.mano-anuncio--jackpot    { background: #7e6112; border-color: #ffd36b; color: #fff3c4; }
+.mano-anuncio--revolucion { background: #1a5aa6; border-color: #7bc4ff; }
+.mano-anuncio--caos       { background: #5b2a8f; border-color: #c79bff; }
+
+/* Revolución */
+.rev-fila { display: flex; justify-content: center; gap: 110px; padding: 12px 0 4px; }
+.rev-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rev-rotulo { font-size: 1.3rem; opacity: 0.8; }
+.rev-caja {
+    --dx: 260px;
+    width: 150px;
+    box-sizing: border-box;
+    padding: 10px 8px 12px;
+    text-align: center;
+    font-size: 1.6rem;
+    color: #ffd36b;
+    background: #0f1a1f;
+    border: 3px solid #ffd36b;
+    border-radius: 10px;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.45);
+    animation: revIda 1.1s ease-in-out 0.5s both;
+}
+.rev-caja--ultimo {
+    --dx: -260px;
+    color: #ffb0b8;
+    border-color: #ff5a6a;
+    animation-name: revVuelta;
+}
+@keyframes revIda {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(calc(var(--dx) / 2), -46px) scale(1.18); }
+    100% { transform: translate(var(--dx), 0); }
+}
+@keyframes revVuelta {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(calc(var(--dx) / 2), 46px) scale(0.9); }
+    100% { transform: translate(var(--dx), 0); }
+}
+@media (max-width: 760px) {
+    .mano-ruleta { --w: 17vw; --g: 1.5vw; }
+    .mano-opcion-desc { display: none; }
+    .mano-opcion-icono { font-size: 1.6rem; }
+    .mano-opcion-nombre { font-size: 0.8rem; }
+    .rev-fila { gap: 40px; }
+    .rev-caja { --dx: 190px; }
+    .rev-caja--ultimo { --dx: -190px; }
+}
+
+/* Bancarrota */
+.banca-escena {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(80vw, 420px);
+    height: 150px;
+    overflow: hidden;
+}
+.banca-moneda {
+    position: absolute;
+    top: -30px;
+    left: var(--x);
+    font-size: 1.8rem;
+    animation: bancaCae 1.4s ease-in var(--d) both;
+}
+@keyframes bancaCae {
+    0%   { opacity: 1; transform: translateY(0) rotate(0); }
+    100% { opacity: 0.2; transform: translateY(190px) rotate(360deg); }
+}
+.banca-sello {
+    z-index: 2;
+    padding: 0 18px 4px;
+    font-size: 3.4rem;
+    color: #fff;
+    background: #8f1119;
+    border: 4px solid #ff5a6a;
+    border-radius: 10px;
+    animation: selloAparece 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.6) 0.9s both;
+}
+
+/* Jackpot */
+.jack-escena {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: min(80vw, 420px);
+    min-height: 160px;
+}
+.jack-slot { font-size: 3.6rem; animation: jackGira 0.9s ease-out both; }
+@keyframes jackGira {
+    0%   { opacity: 0; transform: rotate(-360deg) scale(0.3); }
+    100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+.jack-nombre {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 2rem;
+    color: #ffd36b;
+    text-shadow: 0 0 14px rgba(255, 211, 107, 0.8);
+    animation: anuncioPop 0.4s ease-out 0.8s both;
+}
+.jack-premio { font-size: 2.6rem; color: #fff3c4; animation: anuncioPop 0.4s ease-out 1.1s both; }
+.jack-moneda {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    font-size: 1.6rem;
+    opacity: 0;
+    animation: jackSalta 1.2s ease-out var(--d) both;
+}
+@keyframes jackSalta {
+    0%   { opacity: 1; transform: translate(0, 0) scale(0.5); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(540deg) scale(1.1); }
+}
+
+/* Caos */
+.caos-escena {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: min(80vw, 520px);
+    min-height: 190px;
+}
+.caos-remolino {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    animation: caosGira 1.3s ease-in forwards;
+}
+.caos-carta {
+    position: absolute;
+    width: 44px;
+    height: 62px;
+    margin: -31px 0 0 -22px;
+    transform: rotate(var(--a)) translateY(-64px);
+}
+@keyframes caosGira {
+    0%   { opacity: 0; transform: rotate(0) scale(0.4); }
+    20%  { opacity: 1; transform: rotate(200deg) scale(1); }
+    85%  { opacity: 1; transform: rotate(900deg) scale(1); }
+    100% { opacity: 0; transform: rotate(1080deg) scale(0.2); }
+}
+.caos-reparto {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 22px;
+    animation: caosAparece 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.3) 1.3s both;
+}
+@keyframes caosAparece {
+    0%   { opacity: 0; transform: scale(0.5) rotate(-8deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.caos-jugador { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 110px; }
+.caos-mano { display: flex; gap: 8px; min-height: 65px; align-items: center; }
+.caos-mini { width: 46px; height: 65px; }
+.caos-nada { font-size: 1.6rem; opacity: 0.5; }

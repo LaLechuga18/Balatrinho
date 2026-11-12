@@ -1,0 +1,46 @@
+/* Widget discreto: solo se ve el icono; el slider aparece al pasar el mouse o enfocar */
+.musica {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 999px;
+    opacity: 0.45;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.musica:hover,
+.musica:focus-within {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.musica-btn {
+    padding: 2px 4px;
+    font-size: 1rem;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.musica-barra {
+    width: 0;
+    margin: 0;
+    opacity: 0;
+    accent-color: #0b8cf0;
+    cursor: pointer;
+    transition: width 0.2s, margin 0.2s, opacity 0.2s;
+}
+
+.musica:hover .musica-barra,
+.musica:focus-within .musica-barra {
+    width: 80px;
+    margin: 0 6px 0 2px;
+    opacity: 1;
+}

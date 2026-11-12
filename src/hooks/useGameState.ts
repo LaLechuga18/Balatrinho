@@ -13,8 +13,10 @@ import {
   ajustarGanancia,
   datosComodin,
   PORCENTAJE_VENTA,
+  CATALOGO_COMODINES,
   type Comodin,
   type EventoMaldito,
+  type SubEventoMano,
 } from '../logic/jokers';
 import {
   crearBots,
@@ -26,7 +28,7 @@ import {
   type Bot,
   type ConfigBots,
 } from '../logic/bots';
-import { sonidoJugar, sonidoPunto } from '../services/Sounds';
+import { sonidoJugar, sonidoPunto, sonidoCarta, sonidoDescartar, sonidoMonedas, sonidoFallo } from '../services/Sounds';
 import { getSocket } from '../services/socketService';
 
 // ─── Constantes de configuración ────────────────────────────────────────────
@@ -153,6 +155,88 @@ export function useGameState(props?: UseGameStateProps) {
       const programar = (ms: number, fn: () => void) => {
         eventoTimeoutsRef.current.push(window.setTimeout(fn, ms));
       };
+
+      if (ev.efecto === 'evento-aleatorio') {
+        setEventoMaldito({ ...ev, miId, clave });
+        programar(6700, () => setEventoMaldito(prev => (prev?.clave === clave ? null : prev)));
+
+        const nombres: Record<SubEventoMano, string> = {
+          revolucion: 'Revolución', bancarrota: 'Bancarrota', jackpot: 'Jackpot',
+          sacrificio: 'Sacrificio', caos: 'Caos',
+        };
+        agregarHistorial(`🖐️ ${ev.vendedorNombre} vendió La Mano: ¡${nombres[ev.evento]}!`, rondaActual);
+
+        const APLICA: Record<SubEventoMano, number> = {
+          revolucion: 1600, bancarrota: 1000, jackpot: 1100, caos: 1300, sacrificio: 1500,
+        };
+
+        programar(3750 + APLICA[ev.evento], () => {
+          switch (ev.evento) {
+            case 'bancarrota':
+              setMonedas(m => Math.floor(m * 0.75));
+              break;
+            case 'jackpot':
+              if (ev.ganador?.playerId === miId) {
+                setMonedas(m => m + ajustarGanancia(comodinesEquipados, 10));
+              }
+              break;
+            case 'sacrificio': {
+              const a = ev.afectados ?? [];
+              const mio = a.find(x => x.playerId === miId);
+              if (mio) setComodinesEquipados(prev => prev.filter(c => c.id !== mio.jokerId));
+              setOponentes(prev =>
+                prev.map(p => {
+                  const x = a.find(y => y.playerId === p.id);
+                  return x ? { ...p, jokers: (p.jokers ?? []).filter(j => j.id !== x.jokerId) } : p;
+                })
+              );
+              break;
+            }
+            case 'revolucion': {
+              const x = ev.intercambio;
+              if (!x) break;
+              if (miId === x.primeroId) {
+                setPuntajeTotal(x.totalUltimo);
+                if (x.cambiaRonda) setPuntajeRonda(x.rondaUltimo);
+              } else if (miId === x.ultimoId) {
+                setPuntajeTotal(x.totalPrimero);
+                if (x.cambiaRonda) setPuntajeRonda(x.rondaPrimero);
+              }
+              setOponentes(prev =>
+                prev.map(p => {
+                  if (p.id === x.primeroId) {
+                    return { ...p, totalScore: x.totalUltimo, ...(x.cambiaRonda ? { currentRoundScore: x.rondaUltimo } : {}) };
+                  }
+                  if (p.id === x.ultimoId) {
+                    return { ...p, totalScore: x.totalPrimero, ...(x.cambiaRonda ? { currentRoundScore: x.rondaPrimero } : {}) };
+                  }
+                  return p;
+                })
+              );
+              break;
+            }
+            case 'caos': {
+              const r = ev.reparto ?? [];
+              const mio = r.find(x => x.playerId === miId);
+              if (mio) {
+                setComodinesEquipados(
+                  mio.jokers
+                    .map(j => CATALOGO_COMODINES.find(c => c.id === j.id))
+                    .filter((c): c is Comodin => Boolean(c))
+                );
+              }
+              setOponentes(prev =>
+                prev.map(p => {
+                  const x = r.find(y => y.playerId === p.id);
+                  return x ? { ...p, jokers: x.jokers } : p;
+                })
+              );
+              break;
+            }
+          }
+        });
+        return;
+      }
 
       setEventoMaldito({ ...ev, miId, clave });
       const duracion = ev.efecto === 'tirar-dado' ? 4300 : 3900;
@@ -458,6 +542,7 @@ export function useGameState(props?: UseGameStateProps) {
     const cantidadSeleccionada = mano.filter(c => c.seleccionada).length;
     if (!mano[index].seleccionada && cantidadSeleccionada >= MAX_SELECCION) return;
 
+    sonidoCarta(!mano[index].seleccionada);
     setMano(prev =>
       prev.map((carta, i) =>
         i === index ? { ...carta, seleccionada: !carta.seleccionada } : carta
@@ -469,6 +554,7 @@ export function useGameState(props?: UseGameStateProps) {
     if (descartesRestantes <= 0 || esperandoOponentes) return;
     if (!mano.some(c => c.seleccionada)) return;
 
+    sonidoDescartar();
     const cantidad = mano.filter(c => c.seleccionada).length;
     setTotalCartasDescartadas(prev => {
       const nuevo = prev + cantidad;
@@ -523,14 +609,15 @@ export function useGameState(props?: UseGameStateProps) {
     let t = INICIO_MS;
     let nSonido = 0;
     calculo.pasos.forEach((paso, i) => {
-      const n = nSonido++;
+      const n = paso.tipo === 'fallo' ? nSonido : nSonido++;
       programar(t, () => {
         setJugadaAnimada(prev =>
           prev
             ? { ...prev, pasoActual: i, fichas: paso.fichasDespues, mult: paso.multDespues }
             : null
         );
-        sonidoPunto(n, paso.tipo);
+        if (paso.tipo === 'fallo') sonidoFallo();
+        else sonidoPunto(n, paso.tipo);
       });
       t += paso.tipo === 'carta' ? PASO_CARTA_MS : PASO_COMODIN_MS;
     });
@@ -702,6 +789,7 @@ export function useGameState(props?: UseGameStateProps) {
   const venderComodin = (comodinId: string) => {
     const comodin = comodinesEquipados.find(c => c.id === comodinId);
     if (!comodin) return;
+    sonidoMonedas();
     const reembolso = Math.floor(comodin.costo * PORCENTAJE_VENTA);
     const nuevosComodines = comodinesEquipados.filter(c => c.id !== comodinId);
     setMonedas(prev => prev + reembolso);
@@ -724,6 +812,7 @@ export function useGameState(props?: UseGameStateProps) {
     if (comodinesEquipados.length >= MAX_COMODINES) return;
     if (comodinesEquipados.some(c => c.id === comodin.id)) return;
 
+    sonidoMonedas();
     const nuevosComodines = [...comodinesEquipados, comodin];
     setMonedas(prev => prev - comodin.costo);
     setComodinesEquipados(nuevosComodines);

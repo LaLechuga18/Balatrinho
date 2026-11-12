@@ -20,7 +20,14 @@ export type PasoComodin = {
   multDespues: number;
 };
 
-export type PasoPuntuacion = PasoCarta | PasoComodin;
+export type PasoFallo = {
+  tipo: 'fallo';
+  comodinId: string;
+  fichasDespues: number;
+  multDespues: number;
+};
+
+export type PasoPuntuacion = PasoCarta | PasoComodin | PasoFallo;
 
 export interface ResultadoMano {
   nombreMano: string;
@@ -180,6 +187,7 @@ export function evaluarMano(
   let fichasComodines = 0;
   let multComodines = 0;
   let xMultTotal = 1;
+  const probFallo = comodinesEquipados.reduce((m, c) => Math.max(m, c.fallaComodines ?? 0), 0);
   for (const comodin of comodinesEquipados) {
     const ef = comodin.calcularEfecto({
       cartasPuntuables,
@@ -191,6 +199,10 @@ export function evaluarMano(
     const multExtra = ef.multExtra || 0;
     const xMult = ef.xMult ?? 1;
     if (fichasExtra === 0 && multExtra === 0 && xMult === 1) continue; // no se activó
+    if (probFallo > 0 && Math.random() < probFallo) {
+      pasos.push({ tipo: 'fallo', comodinId: comodin.id, fichasDespues: fichasAcum, multDespues: multAcum });
+      continue;
+    }
 
     fichasAcum = Math.max(0, fichasAcum + fichasExtra);
     multAcum = (multAcum + multExtra) * xMult;

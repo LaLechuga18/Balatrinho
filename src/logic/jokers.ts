@@ -3,9 +3,40 @@ import type { CardData } from '../types/gameType';
 export const PORCENTAJE_VENTA = 0.4; // 40% del costo original
 const PESO_MALDITO = 0.25; // probabilidad relativa en la tienda (1 = normal)
 
-export type EfectoAlVender = 'destruir-joker-oponentes' | 'tirar-dado' | 'destruir-mas-barato';
+export type EfectoAlVender =
+  | 'destruir-joker-oponentes'
+  | 'tirar-dado'
+  | 'destruir-mas-barato'
+  | 'evento-aleatorio';
+
+export type SubEventoMano = 'revolucion' | 'bancarrota' | 'jackpot' | 'sacrificio' | 'caos';
+
+export interface EventoMano {
+  efecto: 'evento-aleatorio';
+  vendedorNombre: string;
+  evento: SubEventoMano;
+  intercambio?: {
+    primeroId: string;
+    primeroNombre: string;
+    ultimoId: string;
+    ultimoNombre: string;
+    totalPrimero: number;
+    totalUltimo: number;
+    rondaPrimero: number;
+    rondaUltimo: number;
+    cambiaRonda: boolean;
+  };
+  ganador?: { playerId: string; name: string };
+  afectados?: { playerId: string; jugador: string; jokerId: string; nombre: string }[];
+  reparto?: {
+    playerId: string;
+    jugador: string;
+    jokers: { id: string; nombre: string; imagen?: string }[];
+  }[];
+}
 
 export type EventoMaldito =
+  | EventoMano
   | {
       efecto: 'tirar-dado';
       vendedorNombre: string;
@@ -57,6 +88,8 @@ export interface Comodin {
   peso?: number;
   /** Factor sobre las ganancias de monedas (0.5 = la mitad). */
   multiplicadorGanancias?: number;
+  /** Probabilidad (0-1) de que TUS comodines no se activen. */
+  fallaComodines?: number;
   /** Monedas que pierdes al terminar cada ronda. */
   costoFinRonda?: number;
   /** Efecto al venderlo. */
@@ -96,7 +129,7 @@ export const CATALOGO_COMODINES: Comodin[] = [
     nombre: 'Comodín',
     descripcion: '+1 al multiplicador de cualquier mano.',
     costo: 5,
-    imagen: '/frames/jokers/Joker.webp',
+    imagen: '/frames/jokers/comodin.webp',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 1, xMult: 1 }),
   },
 
@@ -301,6 +334,20 @@ export const CATALOGO_COMODINES: Comodin[] = [
     alVender: 'destruir-mas-barato',
     calcularEfecto: () => ({ fichasExtra: 0, multExtra: 0, xMult: 1 }),
   },
+  {
+    id: 'la-mano',
+    nombre: 'La Mano',
+    descripcion: 'Tus comodines tienen 10% de probabilidad de no activarse.',
+    descripcionVenta:
+      'Abre un evento aleatorio: Revolución, Bancarrota, Jackpot, Sacrificio o Caos.',
+    costo: 7,
+    imagen: '/frames/cursed_jokers/Four_Fingers.png',
+    maldito: true,
+    peso: PESO_MALDITO,
+    fallaComodines: 0.1,
+    alVender: 'evento-aleatorio',
+    calcularEfecto: () => ({ fichasExtra: 0, multExtra: 0, xMult: 1 }),
+  },
 ];
 
 export const precioVentaComodin = (c: Comodin) => Math.floor(c.costo * PORCENTAJE_VENTA);
@@ -335,6 +382,23 @@ export function generarEventoSolo(
   restantes: Comodin[],
   nombre: string
 ): EventoMaldito {
+  if (efecto === 'evento-aleatorio') {
+    // En solitario no hay con quién intercambiar, así que no salen Revolución ni Caos
+    const opciones = ['bancarrota', 'jackpot', 'sacrificio'] as const;
+    const evento = opciones[Math.floor(Math.random() * opciones.length)];
+    const base = { efecto, vendedorNombre: nombre, evento } as const;
+    if (evento === 'jackpot') return { ...base, ganador: { playerId: 'local', name: nombre } };
+    if (evento === 'sacrificio') {
+      const elegido = restantes[Math.floor(Math.random() * restantes.length)];
+      return {
+        ...base,
+        afectados: elegido
+          ? [{ playerId: 'local', jugador: nombre, jokerId: elegido.id, nombre: elegido.nombre }]
+          : [],
+      };
+    }
+    return base;
+  }
   if (efecto === 'tirar-dado') {
     return {
       efecto,
